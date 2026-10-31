@@ -1,0 +1,304 @@
+import { site, navigation, products } from '../../../site.config.js';
+import { esc, icon, $, $$, route } from '../lib/util.js';
+import { resolveItem, getProduct, productUrl, fromPrice } from '../lib/catalog.js';
+import { picture } from '../lib/images.js';
+import { money } from '../lib/util.js';
+import { bag } from '../lib/cart.js';
+import { makeOverlay } from './overlay.js';
+
+const current = () => route.file;
+
+const wordmark = () =>
+  site.brand.logoSrc
+    ? `<img src="${esc(site.brand.logoSrc)}" alt="${esc(site.brand.name)}">`
+    : `<span aria-hidden="true">${esc(site.brand.wordmark)}</span><span class="visually-hidden">${esc(site.brand.name)} — home</span>`;
+
+const announceBar = () => {
+  const items = site.announcements || [];
+  if (!items.length) return '';
+  return `
+<div class="announce" role="region" aria-label="Announcements">
+  <div class="announce__track">
+    ${items
+      .map(
+        (a, i) => `<p class="announce__item${i === 0 ? ' is-active' : ''}" ${i ? 'aria-hidden="true"' : ''}>${
+          a.href ? `<a href="${esc(a.href)}" ${i ? 'tabindex="-1"' : ''}>${esc(a.text)}</a>` : `<span>${esc(a.text)}</span>`
+        }</p>`
+      )
+      .join('')}
+  </div>
+  ${items.length > 1 ? `<button class="announce__pause" type="button" aria-label="Pause announcements" aria-pressed="false">${icon.pause}</button>` : ''}
+</div>`;
+};
+
+const megaColumn = (col) => `
+<div>
+  <p class="mega__title">${esc(col.title)}</p>
+  <ul class="mega__list">
+    ${col.items
+      .map((h) => resolveItem(h))
+      .filter(Boolean)
+      .map(
+        (r) => `<li class="${r.available ? '' : 'is-muted'}"><a href="${esc(r.url)}">${esc(r.name)}${
+          r.available ? '' : '<span class="soon">Coming soon</span>'
+        }</a></li>`
+      )
+      .join('')}
+  </ul>
+</div>`;
+
+const megaFeature = (f) => {
+  const p = getProduct(f.product);
+  if (!p) return '<div></div>';
+  return `<a class="mega__card" href="${productUrl(p)}">
+    <div class="media">${picture(f.image, { alt: '', sizes: '22vw' })}</div>
+    <span class="t">${esc(p.name)}</span>
+    <span class="s">${esc(p.scentName || '')} · ${money(fromPrice(p))}</span>
+  </a>`;
+};
+
+const megaTile = (t) => `<a class="mega__card" href="${esc(t.href)}">
+  <div class="media">${picture(t.image, { alt: '', sizes: '22vw' })}</div>
+  <span class="t">${esc(t.label)}</span>
+  <span class="s">Coming soon</span>
+</a>`;
+
+const mega = (item, i) => {
+  if (!item.mega) return '';
+  const cols = item.mega.columns.length;
+  return `<div class="mega" id="mega-${i}" role="region" aria-label="${esc(item.label)} menu">
+    <div class="container mega__inner" style="--cols:${cols}">
+      ${item.mega.columns.map(megaColumn).join('')}
+      ${item.mega.feature ? megaFeature(item.mega.feature) : '<div></div>'}
+      ${item.mega.tile ? megaTile(item.mega.tile) : ''}
+    </div>
+  </div>`;
+};
+
+const navList = () => `
+<nav class="nav" aria-label="Primary">
+  <ul class="nav__list">
+    ${navigation.primary
+      .map((item, i) => {
+        const isCurrent = current() === item.href.split('?')[0] && !item.mega;
+        if (item.mega)
+          return `<li><button class="nav__link" type="button" aria-expanded="false" aria-controls="mega-${i}" data-mega="${i}">${esc(item.label)} ${icon.chev}</button></li>`;
+        return `<li><a class="nav__link" href="${esc(item.href)}"${isCurrent ? ' aria-current="page"' : ''}>${esc(item.label)}</a></li>`;
+      })
+      .join('')}
+  </ul>
+</nav>`;
+
+const mobileMenu = () => `
+<div class="drawer drawer--left" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu" tabindex="-1" hidden>
+  <div class="drawer__head">
+    <a class="wordmark" href="index.html" style="font-size:1.35rem">${wordmark()}</a>
+    <button class="icon-btn" type="button" data-close aria-label="Close menu">${icon.close}</button>
+  </div>
+  <div class="drawer__body">
+    <ul class="mnav">
+      ${navigation.primary
+        .map((item, i) => {
+          if (!item.mega) return `<li><a class="mnav__link" href="${esc(item.href)}">${esc(item.label)}</a></li>`;
+          return `<li>
+            <button class="mnav__toggle" type="button" aria-expanded="false" aria-controls="msub-${i}">${esc(item.label)} ${icon.chev}</button>
+            <div id="msub-${i}" hidden>
+              ${item.mega.columns
+                .map(
+                  (col) => `<p class="mnav__group">${esc(col.title)}</p>
+                <ul class="mnav__sub">
+                  ${col.items
+                    .map((h) => resolveItem(h))
+                    .filter(Boolean)
+                    .map((r) => `<li><a href="${esc(r.url)}"><span>${esc(r.name)}</span>${r.available ? '' : '<span class="soon">Soon</span>'}</a></li>`)
+                    .join('')}
+                </ul>`
+                )
+                .join('')}
+              <p style="margin:0 0 20px"><a class="link" href="${esc(item.href)}">View all ${icon.arrow}</a></p>
+            </div>
+          </li>`;
+        })
+        .join('')}
+    </ul>
+  </div>
+  <div class="drawer__foot mnav-foot">
+    <a href="account.html">Account</a>
+    <a href="faq.html">FAQs</a>
+    ${site.contact.email ? `<a href="mailto:${esc(site.contact.email)}">${esc(site.contact.email)}</a>` : ''}
+  </div>
+</div>`;
+
+export const renderHeader = ({ overlay = false } = {}) => {
+  const mount = document.getElementById('site-header');
+  if (!mount) return;
+  mount.innerHTML = `
+${announceBar()}
+<header class="header${overlay ? ' header--overlay is-top' : ''}" id="header">
+  <div class="container header__inner">
+    <div class="header__left">
+      <button class="icon-btn menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu" data-open-menu>${icon.menu}</button>
+      ${navList()}
+    </div>
+    <a class="wordmark" href="index.html">${wordmark()}</a>
+    <div class="header__right">
+      <button class="icon-btn" type="button" aria-label="Search" data-open-search aria-controls="search-panel" aria-expanded="false">${icon.search}</button>
+      <a class="icon-btn" href="account.html" aria-label="Account">${icon.user}</a>
+      <button class="icon-btn" type="button" data-open-bag aria-controls="bag-drawer" aria-expanded="false">
+        ${icon.bag}<span class="visually-hidden">Bag, </span><span class="bag-count" data-bag-count data-count="0" aria-hidden="true">0</span><span class="visually-hidden" data-bag-count-sr>0 items</span>
+      </button>
+    </div>
+  </div>
+  ${navigation.primary.map(mega).join('')}
+</header>
+${mobileMenu()}`;
+
+  wireAnnouncements(mount);
+  wireMega(mount);
+  wireMobile(mount);
+  wireScroll(overlay);
+  updateCount();
+  window.addEventListener('bag:change', updateCount);
+};
+
+const updateCount = () => {
+  const n = bag.count();
+  $$('[data-bag-count]').forEach((el) => {
+    el.textContent = n;
+    el.dataset.count = n;
+  });
+  $$('[data-bag-count-sr]').forEach((el) => (el.textContent = `${n} ${n === 1 ? 'item' : 'items'}`));
+};
+
+const wireAnnouncements = (root) => {
+  const items = $$('.announce__item', root);
+  if (items.length < 2) return;
+  let i = 0;
+  let paused = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const btn = $('.announce__pause', root);
+  const show = (n) => {
+    items.forEach((el, k) => {
+      el.classList.toggle('is-active', k === n);
+      el.setAttribute('aria-hidden', k === n ? 'false' : 'true');
+      el.querySelector('a')?.setAttribute('tabindex', k === n ? '0' : '-1');
+    });
+  };
+  const sync = () => {
+    btn.setAttribute('aria-pressed', String(paused));
+    btn.setAttribute('aria-label', paused ? 'Play announcements' : 'Pause announcements');
+    btn.innerHTML = paused ? icon.play : icon.pause;
+  };
+  sync();
+  setInterval(() => {
+    if (paused || document.hidden) return;
+    i = (i + 1) % items.length;
+    show(i);
+  }, 5000);
+  btn.addEventListener('click', () => {
+    paused = !paused;
+    sync();
+  });
+  root.querySelector('.announce').addEventListener('mouseenter', () => (paused = true));
+  root.querySelector('.announce').addEventListener('mouseleave', () => {
+    paused = btn.getAttribute('aria-pressed') === 'true';
+  });
+};
+
+const wireMega = (root) => {
+  const header = $('#header', root);
+  const buttons = $$('[data-mega]', root);
+  let openIdx = null;
+  let hoverTimer;
+  const close = () => {
+    buttons.forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    $$('.mega', root).forEach((m) => m.classList.remove('is-open'));
+    header.classList.remove('has-mega');
+    openIdx = null;
+    syncTop();
+  };
+  const open = (i) => {
+    close();
+    const b = buttons.find((x) => x.dataset.mega === String(i));
+    b.setAttribute('aria-expanded', 'true');
+    $(`#mega-${i}`, root).classList.add('is-open');
+    header.classList.add('has-mega');
+    header.classList.remove('is-top');
+    openIdx = i;
+  };
+  buttons.forEach((b) => {
+    b.addEventListener('click', () => (openIdx === b.dataset.mega ? close() : open(b.dataset.mega)));
+    b.addEventListener('mouseenter', () => {
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => open(b.dataset.mega), 120);
+    });
+  });
+  header.addEventListener('mouseleave', () => {
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(close, 200);
+  });
+  header.addEventListener('mouseenter', () => clearTimeout(hoverTimer));
+  $$('.nav__link:not([data-mega])', root).forEach((a) => a.addEventListener('mouseenter', () => {
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(close, 120);
+  }));
+  window.addEventListener('route:change', close);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && openIdx !== null) {
+      const b = buttons.find((x) => x.dataset.mega === openIdx);
+      close();
+      b?.focus();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (openIdx !== null && !header.contains(e.target)) close();
+  });
+  // close when focus leaves the header
+  header.addEventListener('focusout', (e) => {
+    if (openIdx !== null && !header.contains(e.relatedTarget)) close();
+  });
+};
+
+let syncTop = () => {};
+let overlayOn = false;
+const wireScroll = (overlay) => {
+  const header = document.getElementById('header');
+  overlayOn = overlay;
+  syncTop = () => {
+    if (!overlayOn) return header.classList.remove('is-top');
+    if (header.classList.contains('has-mega')) return;
+    header.classList.toggle('is-top', window.scrollY < 8);
+  };
+  syncTop();
+  window.addEventListener('scroll', syncTop, { passive: true });
+};
+
+/** Switch the transparent-over-hero header on/off (single-file page changes). */
+export const setHeaderOverlay = (on) => {
+  overlayOn = on;
+  document.getElementById('header')?.classList.toggle('header--overlay', on);
+  syncTop();
+};
+
+const wireMobile = (root) => {
+  const drawer = $('#mobile-menu', root);
+  const toggle = $('[data-open-menu]', root);
+  const ov = makeOverlay(drawer, {
+    onOpen: () => toggle.setAttribute('aria-expanded', 'true'),
+    onClose: () => toggle.setAttribute('aria-expanded', 'false'),
+    initialFocus: () => $('[data-close]', drawer),
+  });
+  toggle.addEventListener('click', () => ov.open(toggle));
+  $('[data-close]', drawer).addEventListener('click', () => ov.close());
+  $$('.mnav__toggle', drawer).forEach((b) =>
+    b.addEventListener('click', () => {
+      const exp = b.getAttribute('aria-expanded') === 'true';
+      b.setAttribute('aria-expanded', String(!exp));
+      document.getElementById(b.getAttribute('aria-controls')).hidden = exp;
+    })
+  );
+  // close the drawer when a same-page anchor is followed
+  drawer.addEventListener('click', (e) => {
+    if (e.target.closest('a')) ov.close(false);
+  });
+  window.matchMedia('(min-width: 1100px)').addEventListener('change', (m) => m.matches && ov.close(false));
+};

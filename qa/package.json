@@ -1,0 +1,13 @@
+{
+  "name": "site-qa",
+  "private": true,
+  "description": "QA scripts for the website (not needed to run the site).",
+  "type": "module",
+  "scripts": {
+    "smoke": "node smoke.mjs",
+    "test": "node interactions.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.10.2"
+  }
+}
