@@ -9,7 +9,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: the terracotta cap in jaali light"
+    "alt": "Concept render: the terracotta cap in jaali light",
+    "kind": "render"
   },
   "detail_label": {
     "w": 1280,
@@ -20,7 +21,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: close-up of the printed label in patterned light"
+    "alt": "Concept render: close-up of the printed label in patterned light",
+    "kind": "render"
   },
   "hero_portrait": {
     "w": 1280,
@@ -31,7 +33,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: the body mist bottle on a travertine block in patterned sunlight"
+    "alt": "Concept render: the body mist bottle on a travertine block in patterned sunlight",
+    "kind": "render"
   },
   "hero_wide": {
     "w": 2400,
@@ -43,7 +46,8 @@ export const images = {
       1600,
       2400
     ],
-    "alt": "Concept render: a frosted body mist bottle with a terracotta cap on a travertine block, lit through a carved jaali screen"
+    "alt": "Concept render: a frosted body mist bottle with a terracotta cap on a travertine block, lit through a carved jaali screen",
+    "kind": "render"
   },
   "mist": {
     "w": 1280,
@@ -54,7 +58,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: a fine mist leaving the bottle in warm light"
+    "alt": "Concept render: a fine mist leaving the bottle in warm light",
+    "kind": "render"
   },
   "niche": {
     "w": 1280,
@@ -65,7 +70,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: the bottle in an arched limewash niche"
+    "alt": "Concept render: the bottle in an arched limewash niche",
+    "kind": "render"
   },
   "pack_angle": {
     "w": 1280,
@@ -76,7 +82,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: Body Mist Nº 01 bottle at an angle"
+    "alt": "Concept render: Body Mist Nº 01 bottle at an angle",
+    "kind": "render"
   },
   "pack_front": {
     "w": 1280,
@@ -87,7 +94,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: Body Mist Nº 01 bottle, front view"
+    "alt": "Concept render: Body Mist Nº 01 bottle, front view",
+    "kind": "render"
   },
   "pack_open": {
     "w": 1280,
@@ -98,7 +106,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: the bottle with its cap removed"
+    "alt": "Concept render: the bottle with its cap removed",
+    "kind": "render"
   },
   "ritual_ledge": {
     "w": 1280,
@@ -109,7 +118,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": "Concept render: the bottle on a stone ledge beside folded linen"
+    "alt": "Concept render: the bottle on a stone ledge beside folded linen",
+    "kind": "render"
   },
   "up_body_butter": {
     "w": 720,
@@ -118,7 +128,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_body_lotion": {
     "w": 720,
@@ -127,7 +138,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_body_scrub": {
     "w": 720,
@@ -136,7 +148,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_body_wash": {
     "w": 720,
@@ -145,7 +158,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_cleanser": {
     "w": 720,
@@ -154,7 +168,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_group_body": {
     "w": 1280,
@@ -165,7 +180,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_group_face": {
     "w": 1280,
@@ -176,7 +192,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_group_lip": {
     "w": 1280,
@@ -187,7 +204,8 @@ export const images = {
       1200,
       1280
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_hand_cream": {
     "w": 720,
@@ -196,7 +214,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_lip_balm": {
     "w": 720,
@@ -205,7 +224,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_lip_treatment": {
     "w": 720,
@@ -214,7 +234,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_mask": {
     "w": 720,
@@ -223,7 +244,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_moisturiser": {
     "w": 720,
@@ -232,7 +254,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_serum": {
     "w": 720,
@@ -241,7 +264,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_sunscreen": {
     "w": 720,
@@ -250,7 +274,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "up_toner": {
     "w": 720,
@@ -259,7 +284,8 @@ export const images = {
       480,
       720
     ],
-    "alt": ""
+    "alt": "",
+    "kind": "render"
   },
   "wall_light": {
     "w": 1920,
@@ -271,6 +297,7 @@ export const images = {
       1600,
       1920
     ],
-    "alt": "Sunlight falling through a carved jaali screen onto a limewash wall"
+    "alt": "Sunlight falling through a carved jaali screen onto a limewash wall",
+    "kind": "render"
   }
 };

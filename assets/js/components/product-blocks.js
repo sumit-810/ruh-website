@@ -1,8 +1,11 @@
 import { site } from '../../../site.config.js';
-import { esc, icon, money, prov, $, $$, uid } from '../lib/util.js';
+import { esc, icon, money, prov, $, $$, uid, navigate } from '../lib/util.js';
 import { defaultVariant, getVariant } from '../lib/catalog.js';
 import { bag } from '../lib/cart.js';
 import { qtyControl, addToBag } from './bag-drawer.js';
+
+/** Service notes; unconfirmed (provisional) ones only appear in preview mode. */
+const visibleNotes = () => (site.commerce.serviceNotes || []).filter((n) => site.previewMode || !n.provisional);
 
 /** Price row with Indian MRP note and net quantity. */
 export const priceRow = (p, v) => `
@@ -42,10 +45,10 @@ export const buyBox = (p, { idPrefix = uid('buy'), showServiceNotes = true } = {
       : ''
   }
   ${
-    showServiceNotes && site.commerce.serviceNotes?.length
-      ? `<ul class="service-notes" style="margin-top:20px">${site.commerce.serviceNotes
-          .map((n) => `<li>${icon.check}<span>${esc(n)}</span></li>`)
-          .join('')}</ul>${prov(true, 'Placeholder promises', true)}`
+    showServiceNotes && visibleNotes().length
+      ? `<ul class="service-notes" style="margin-top:20px">${visibleNotes()
+          .map((n) => `<li>${icon.check}<span>${esc(n.text)}${prov(n.provisional)}</span></li>`)
+          .join('')}</ul>`
       : ''
   }
 </form>`;
@@ -84,6 +87,11 @@ export const wireBuy = (root, p) => {
       addToBag(p, currentVariant(), getQty(), $('[data-add]', form));
       input.value = 1;
       syncQty();
+    });
+    // Buy now: put the item in the bag and go straight to checkout
+    $('[data-buy-now]', form)?.addEventListener('click', () => {
+      bag.add(p.handle, currentVariant().id, getQty());
+      navigate('checkout.html');
     });
   });
 };

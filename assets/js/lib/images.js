@@ -9,6 +9,7 @@ import { esc } from './util.js';
  */
 export const picture = (key, { alt = '', sizes = '100vw', priority = false, className = '' } = {}) => {
   const m = images[key];
+  alt = altFor(key, alt);
   if (!m) {
     const a11y = alt ? `role="img" aria-label="${esc(alt)}"` : 'aria-hidden="true"';
     return `<div class="img-missing" ${a11y} style="aspect-ratio:4/5;background:var(--sand)"></div>`;
@@ -33,6 +34,7 @@ export const picture = (key, { alt = '', sizes = '100vw', priority = false, clas
  * Only the matching image is downloaded.
  */
 export const artPicture = ({ wide, tall, media = '(min-width: 600px)', alt = '', sizes = '100vw', priority = false }) => {
+  alt = altFor(tall, alt);
   const W = images[wide];
   const T = images[tall];
   if (!W || !T) return picture(W ? wide : tall, { alt, sizes, priority });
@@ -58,5 +60,13 @@ export const thumb = (key) => {
   if (!m) return '';
   return m.src || `assets/img/${key}-${m.widths[0]}.jpg`;
 };
+
+/** True while `key` is still a concept render (no real photo built for it yet). */
+export const isRender = (key) => !!images[key] && images[key].kind !== 'photo';
+
+/** Once a key is a real photo, drop any "Concept render: " prefix left in configured alt text. */
+function altFor(key, alt) {
+  return images[key]?.kind === 'photo' ? alt.replace(/^Concept render:\s*/i, '').replace(/^./, (c) => c.toUpperCase()) : alt;
+}
 
 export const defaultAlt = (key) => images[key]?.alt || '';

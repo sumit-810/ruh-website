@@ -1,6 +1,6 @@
 import { site } from '../../../site.config.js';
 import { esc, icon, prov, param, setTitle, setMeta, money, $, navigate } from '../lib/util.js';
-import { picture } from '../lib/images.js';
+import { picture, isRender } from '../lib/images.js';
 import { getProduct, getUpcoming, getCollection, collectionUrl, defaultVariant, productUrl } from '../lib/catalog.js';
 import { recent } from '../lib/cart.js';
 import { priceRow, buyBox, wireBuy, pyramid, factRows, benefitsList } from '../components/product-blocks.js';
@@ -34,14 +34,23 @@ const gallery = (p) => `
     </div>
     <button class="gallery__nav gallery__nav--prev" type="button" aria-label="Previous image">${icon.arrowLeft}</button>
     <button class="gallery__nav gallery__nav--next" type="button" aria-label="Next image">${icon.arrow}</button>
-    ${p.imageDisclaimer ? `<span class="caption">${esc(p.imageDisclaimer)}</span>` : ''}
+    ${p.imageDisclaimer && p.images.some((i) => isRender(i.key)) ? `<span class="caption">${esc(p.imageDisclaimer)}</span>` : ''}
   </div>
   <div class="gallery__dots">${p.images.map((_, i) => `<button type="button" aria-label="Show image ${i + 1}" aria-current="${i === 0}"></button>`).join('')}</div>
 </div>`;
 
+/** Legal Metrology declarations; marketer and customer care default to the company and contact settings. */
+const productInfo = (p) => {
+  const co = site.company;
+  const info = { ...(p.productInformation || {}) };
+  if (!info['Marketed by'] && (co.legalName || co.name)) info['Marketed by'] = [co.legalName || co.name, co.registeredAddress].filter(Boolean).join(', ') + (co.registeredAddress ? '' : ' (registered address to be added)');
+  if (!info['Customer care'] && site.contact.email) info['Customer care'] = [site.contact.email, site.contact.phone].filter(Boolean).join(' · ');
+  return info;
+};
+
 const infoTable = (p) => `
 <dl class="info-table">
-  ${Object.entries(p.productInformation || {})
+  ${Object.entries(productInfo(p))
     .map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v ? esc(v) : '<span class="pending">To be added before launch</span>'}</dd></div>`)
     .join('')}
 </dl>`;
@@ -84,7 +93,7 @@ export default function product(main) {
       <p class="muted">${esc(p.shortDescription)}</p>
       <div id="main-buy">${buyBox(p, { idPrefix: 'pdp' })}</div>
       ${factRows(p)}
-      ${site.commerce.freeShippingThreshold ? `<p class="small muted">Complimentary delivery on orders over ${money(site.commerce.freeShippingThreshold)}.</p>` : ''}
+      ${site.shipping.flatRate && site.shipping.freeAbove ? `<p class="small muted">Free delivery on orders over ${money(site.shipping.freeAbove)}.</p>` : ''}
     </div>
   </div>
 </div>
@@ -231,7 +240,15 @@ const jsonLd = (p, v) => {
     name: p.name,
     description: p.shortDescription,
     brand: { '@type': 'Brand', name: site.brand.name },
-    offers: { '@type': 'Offer', priceCurrency: site.locale.currency, price: v.price, availability: v.available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: location.href },
+    manufacturer: { '@type': 'Organization', name: site.company.legalName || site.company.name },
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: site.locale.currency,
+      price: v.price,
+      availability: v.available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url: location.href,
+      seller: { '@type': 'Organization', name: site.company.legalName || site.company.name },
+    },
   };
   const s = document.createElement('script');
   s.type = 'application/ld+json';

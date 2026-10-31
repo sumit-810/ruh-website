@@ -65,21 +65,28 @@ const toObject = (form) => {
   return data;
 };
 
+/** True when running somewhere Netlify Forms can't receive posts (local server, file://). */
+const isLocalPreview = () =>
+  location.protocol === 'file:' || ['localhost', '127.0.0.1', '0.0.0.0', '[::1]'].includes(location.hostname);
+
 /** Send to the configured provider. Resolves { ok, reason }. */
 export const send = async (formName, data) => {
   const { provider, endpoint } = site.forms;
+  const fields = Object.fromEntries(Object.entries(data).filter(([k]) => k !== 'bot-field'));
   try {
     if (provider === 'formspree' || provider === 'custom') {
       if (!endpoint) return { ok: false, reason: 'not-configured' };
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ form: formName, ...data }),
+        body: JSON.stringify({ form: formName, ...fields }),
       });
       return { ok: res.ok, reason: res.ok ? '' : `http-${res.status}` };
     }
     if (provider === 'netlify') {
-      const body = new URLSearchParams({ 'form-name': formName, ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, [].concat(v).join(', ')])) });
+      if (isLocalPreview()) return { ok: false, reason: 'local-preview' };
+      // form definitions: netlify-forms.html (Netlify detects forms in static HTML at deploy time)
+      const body = new URLSearchParams({ 'form-name': formName, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, [].concat(v).join(', ')])) });
       const res = await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
       return { ok: res.ok, reason: res.ok ? '' : `http-${res.status}` };
     }
@@ -90,6 +97,7 @@ export const send = async (formName, data) => {
 };
 
 const MESSAGES = {
+  'local-preview': () => 'Preview: forms are delivered through Netlify on the live site, so nothing was sent from this local copy.',
   'not-configured': () =>
     site.previewMode
       ? 'Preview: this form isn’t connected to an email service yet, so nothing was sent or stored. (Configure site.forms in site.config.js.)'
@@ -111,6 +119,7 @@ export const wireForm = (form, { name, success = 'Thank you — you’re on the 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validate(form)) return;
+    if (form.querySelector('[name="bot-field"]')?.value) return; // spam trap filled — silently ignore
     if (btn) {
       btn.disabled = true;
       btn.dataset.label ??= btn.innerHTML;
@@ -129,7 +138,7 @@ export const wireForm = (form, { name, success = 'Thank you — you’re on the 
         form.reset();
         onSuccess?.();
       } else {
-        status.dataset.tone = result.reason === 'not-configured' ? 'info' : 'error';
+        status.dataset.tone = result.reason === 'not-configured' || result.reason === 'local-preview' ? 'info' : 'error';
         status.textContent = (MESSAGES[result.reason] || MESSAGES.default)();
       }
     }

@@ -38,13 +38,13 @@ const errors = [];
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('console', (m) => m.type() === 'error' && !/Unsupported method \('POST'\)/.test(m.text()) && errors.push(m.text())); // static preview server rejects /api POSTs by design
 
   await page.goto(`${BASE}/product.html?p=body-mist-no-01`, { waitUntil: 'networkidle' });
   const unit = rupees(await page.textContent('#main-buy [data-btn-price]'));
   ok('PDP shows a price in the CTA', unit > 0, `₹${unit}`);
   ok('PDP shows MRP inclusive of taxes', (await page.textContent('[data-price-row]')).includes('MRP inclusive of all taxes'));
-  ok('Buy now hidden without real checkout', (await page.$('[data-buy-now]')) === null);
+  ok('Buy now offered (real checkout configured)', (await page.$('[data-buy-now]')) !== null);
   ok('Size selector hidden with one size', (await page.$('#main-buy input[type=radio][name=variant]')) === null);
 
   // quantity stepper then add
@@ -57,7 +57,7 @@ const errors = [];
   ok('Bag count updates', (await page.textContent('[data-bag-count]')).trim() === '3');
   let subtotal = rupees(await page.textContent('#bag-drawer .cart-totals strong'));
   ok('Subtotal = qty × price', subtotal === unit * 3, `₹${subtotal}`);
-  ok('Focus moved into the bag drawer', await page.evaluate(() => document.getElementById('bag-drawer').contains(document.activeElement)));
+  ok('Focus moved into the bag drawer', await page.waitForFunction(() => document.getElementById('bag-drawer').contains(document.activeElement), null, { timeout: 2000 }).then(() => true, () => false));
 
   // change quantity in drawer
   await page.click('#bag-drawer [data-step="-1"]');
@@ -81,7 +81,7 @@ const errors = [];
 
   // checkout demo
   await page.goto(`${BASE}/checkout.html`, { waitUntil: 'networkidle' });
-  ok('Checkout is labelled as a demo', (await page.textContent('main')).includes('Demo checkout'));
+  ok('Checkout offers secure online payment', /Razorpay/.test(await page.textContent('main')));
   await page.click('[data-checkout] button[type=submit]');
   const invalid = await page.$$eval('[data-checkout] [aria-invalid="true"]', (els) => els.length);
   ok('Checkout validates required fields', invalid >= 5, `${invalid} invalid fields`);
@@ -93,8 +93,10 @@ const errors = [];
   await page.fill('#co-pin', '400001');
   await page.selectOption('#co-state', 'Maharashtra');
   await page.click('[data-checkout] button[type=submit]');
+  await page.waitForFunction(() => /charged/.test(document.querySelector('[data-checkout] [data-status]')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
   const msg = await page.textContent('[data-checkout] [data-status]');
-  ok('Demo checkout never claims an order was placed', /No order has been placed/.test(msg), msg.slice(0, 60) + '…');
+  // no payment server on a local preview: falls back to a labelled demo that never takes money
+  ok('Preview checkout never claims an order was placed', /No order has been placed and nothing was charged/.test(msg), msg.slice(0, 60) + '…');
 
   // remove item
   await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });

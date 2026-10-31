@@ -1,8 +1,21 @@
-# Rūh — Website (pre-launch build)
+# Rūh by GentleCare: Website (pre-launch build)
 
-A premium, research-led e-commerce website for a new skincare and body-care brand launching in India with **Body Mist Nº 01**, with body, face and lip care presented as **Coming Soon** collections.
+A premium, research-led D2C website for **Rūh**, the skincare and body-care brand of **GentleCare**. It launches in India with **Body Mist Nº 01**, and shows body, face and lip care as **Coming Soon** collections.
 
-> **Status:** preview build. The brand name ("Rūh"), prices, scent notes, policies and promises are provisional placeholders and are labelled as such on the site while `previewMode` is on. Product images are original **concept renders**, not final packaging. Checkout is a clearly labelled **demo**, and forms are not connected to any service yet. See [`PRODUCT_CONFIGURATION.md`](PRODUCT_CONFIGURATION.md) for everything to confirm before launch.
+> **Status:** commercially wired, content still in preview.
+>
+> **Already wired:**
+> - Real **Razorpay** checkout. Prices are worked out on the server and every payment's signature is verified.
+> - **Netlify Forms** for the newsletter, waitlist, contact and COD orders.
+> - India-specific policy drafts.
+> - A vector logo system.
+>
+> **Still provisional, and labelled on the site while `previewMode` is on:**
+> - The business details only GentleCare can supply.
+> - The fragrance notes, ingredients and claims.
+> - The concept-render imagery.
+>
+> `node tools/launch_check.mjs` lists exactly what is left. See [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md).
 
 ## Documents
 
@@ -12,21 +25,58 @@ A premium, research-led e-commerce website for a new skincare and body-care bran
 | [`RESEARCH_EVIDENCE.md`](RESEARCH_EVIDENCE.md) | Log of every page studied (URL, pattern, why it works, how we adapted it) and research limitations |
 | [`BRAND_DESIGN_SYSTEM.md`](BRAND_DESIGN_SYSTEM.md) | Colours (with contrast ratios), typography, spacing, components, imagery, motion, mobile rules |
 | [`PRODUCT_CONFIGURATION.md`](PRODUCT_CONFIGURATION.md) | Every editable value, what is provisional, and what the business must supply |
+| [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md) | Business details, product facts, payments, forms, policies and go-live steps, in order |
+| [`PHOTOGRAPHY_BRIEF.md`](PHOTOGRAPHY_BRIEF.md) | Shot list, look, technical specs, and how photos replace the renders |
+| [`IMPLEMENTATION_REPORT.md`](IMPLEMENTATION_REPORT.md) | What was built and tested, in both phases |
 
 ## Run it locally
 
-The site is static HTML, CSS and vanilla JavaScript (ES modules). There are no dependencies and no build step. ES modules need to be served over HTTP (not opened as `file://`):
+The site is static HTML, CSS and vanilla JavaScript (ES modules), with no runtime dependencies. Serve it over HTTP (ES modules don't work from `file://`):
 
 ```bash
-cd website
 python3 -m http.server 8080
 ```
 
-Then open <http://localhost:8080>. Any static server works (`npx serve`, nginx, etc.).
+Then open <http://localhost:8080>. On a local server:
+- Checkout and forms run in a clearly labelled preview mode.
+- **Nothing is charged or sent.**
+- The payment and form back ends only exist once the site is deployed on Netlify.
 
-## Deploy
+To try the real payment functions locally with Razorpay **test** keys, use the Netlify CLI:
 
-Upload the folder to any static host: Netlify, Vercel, Cloudflare Pages, GitHub Pages, S3 + CloudFront. Set `404.html` as the not-found page. The `tools/` and `qa/` folders are not needed in production.
+```bash
+npx netlify-cli dev
+```
+
+## Deploy (Netlify)
+
+`netlify.toml` configures everything:
+- **Build:** `node tools/build_public.mjs` copies only the public website into `public/`, and writes `robots.txt` and `sitemap.xml`. Strategy docs, render tools and QA are never published.
+- **Functions:** `netlify/functions/` provides `/api/create-order` and `/api/verify-payment`.
+- **Headers:** security headers, plus long-cache headers for images and fonts.
+- **Launch guard:** with `previewMode: false`, the build **fails** while `tools/launch_check.mjs` reports blockers.
+
+Steps:
+1. In Netlify, choose **Add new site → Import from Git** and pick this repo. The settings are read from `netlify.toml`.
+2. Under **Site configuration → Environment variables**, add `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Start with test keys.
+3. Deploy. Then, in **Forms**, set email notifications to the business inbox.
+4. Connect the domain and set `company.website`.
+
+Useful scripts (Node 18 or later):
+
+```bash
+npm run check
+```
+
+```bash
+npm run build
+```
+
+```bash
+npm test
+```
+
+`npm run check` is the launch check, `npm run build` builds `public/`, and `npm test` runs the payment function tests.
 
 ## Project structure
 
@@ -34,23 +84,36 @@ Upload the folder to any static host: Netlify, Vercel, Cloudflare Pages, GitHub 
 index.html … 404.html      thin page shells (generated by tools/make_pages.py)
 site.config.js             ← ALL brand, product, navigation and page content
 content/journal.js         journal articles
+content/policies.js        Shipping & Returns, Privacy, Terms (India drafts; {{tokens}} filled from config)
+netlify/functions/         create-order.mjs, verify-payment.mjs (Razorpay), _shared.mjs
+netlify-forms.html         hidden form definitions so Netlify detects the JS-rendered forms
+netlify.toml               build, functions, headers
+assets-src/photography/    drop real photos here (see PHOTOGRAPHY_BRIEF.md)
 assets/
   css/main.css             design tokens + all styles (one file, sectioned)
+  brand/                   logo system: wordmark, star, lockups (SVG), social avatar
   fonts/                   self-hosted Bodoni Moda + Jost (OFL licences included)
   img/                     generated AVIF/WebP/JPEG images, favicon, og-image
   js/
     app.js                 bootstrap: header, footer, bag, search, then the page module
-    data/images.js         generated image manifest (sizes, dimensions, alt text)
-    lib/                   util, storage, catalog, cart, images, forms, fields
+    data/images.js         generated image manifest (sizes, dimensions, alt text, photo/render)
+    data/brand.js          generated inline logo SVGs
+    lib/                   util, storage, catalog, cart, pricing (shared with the server), images, forms, fields
     components/            header, footer, bag drawer, search, cards, product blocks, waitlist, overlay, misc
     pages/                 one module per page type
 tools/
   make_pages.py            regenerates the HTML shells (only if the <head> changes)
-  build_images.py          renders → responsive images + manifest
+  build_images.py          photos (preferred) or renders → responsive images + manifest
+  build_brand.py           outlines the logo system from the brand fonts (fontTools)
+  build_public.mjs         deploy build → public/ (+ launch guard)
+  launch_check.mjs         launch-readiness report
+  build_single_file.mjs    one self-contained HTML file in dist/ (for sharing a preview)
   render/                  Blender scene scripts + textures for the concept imagery
 qa/
   smoke.mjs                every page × desktop/tablet/mobile: console errors, 404s, broken images, overflow, screenshots
   interactions.mjs         bag, quantities, totals, persistence, sticky bar, menus, search, forms, filters, checkout, axe-core a11y
+  checkout.mjs             end-to-end Razorpay flow against the real function code (gateway mocked)
+  functions.test.mjs       node --test: pricing, tampering, signature verification, error paths
 ```
 
 ## Pages
@@ -64,9 +127,10 @@ qa/
 | `story.html` | Our Story |
 | `journal.html`, `article.html?a=<slug>` | Journal |
 | `contact.html`, `faq.html` | Contact, FAQs |
-| `shipping-returns.html`, `privacy.html`, `terms.html` | Policy outlines (placeholders) |
+| `shipping-returns.html`, `privacy.html`, `terms.html` | Policy drafts. Decisions still to make are highlighted |
 | `search.html?q=` | Search results (also available as an overlay from the header, or press `/`) |
-| `checkout.html` | Demo checkout |
+| `checkout.html` | Checkout: Razorpay (UPI, cards, net banking, wallets), with optional COD |
+| `order.html?ref=` | Order confirmation |
 | `account.html` | Account placeholder |
 
 ## Editing content
@@ -76,33 +140,65 @@ Open `site.config.js`. Comments explain each field. Common tasks:
 - **Change the price:** `products[0].variants[0].price` (₹, MRP inclusive of taxes). Bags already in visitors' browsers pick up the new price automatically.
 - **Add a size:** add a second entry to `variants`. A size selector appears automatically.
 - **Add a product / move an item from Coming Soon to available:** see `PRODUCT_CONFIGURATION.md` §2.
-- **Rename the brand:** `site.brand.name` and `site.brand.wordmark` (and optionally `logoSrc`). Re-run `python3 tools/make_pages.py` to update the fallback `<title>` text.
-- **Launch:** replace every `// PROVISIONAL` value, then set `previewMode: false`.
+- **Company details:** `site.company` (legal name, address, GSTIN) and `site.contact` (email, phone, WhatsApp, grievance officer). They flow into the footer, contact page, policies, product information and structured data.
+- **Delivery charges:** `site.shipping.flatRate` and `freeAbove`. The bag, checkout and server all use the same rules (`assets/js/lib/pricing.js`).
+- **Policies:** edit `content/policies.js`.
+- **Rename the brand:**
+  1. Change `site.brand.name` and `wordmark`.
+  2. Edit `BRAND` in `tools/build_brand.py` and re-run it to redraw the logo.
+  3. Run `python3 tools/make_pages.py` to update the fallback `<title>` text.
+- **Launch:** follow `LAUNCH_CHECKLIST.md` until `node tools/launch_check.mjs` passes, then set `previewMode: false`.
 
-## Integrations (pending)
+## Payments (Razorpay)
 
-### Forms (newsletter, waitlist / Notify Me, contact)
-`site.forms.provider`:
-- `'none'` (current): validates input, then **tells the visitor nothing was sent**. It never shows a fake success.
-- `'formspree'`: set `endpoint: 'https://formspree.io/f/<id>'`.
-- `'netlify'`: on Netlify, enable Forms and add hidden form definitions for `early-access`, `notify-me` and `contact`.
-- `'custom'`: POSTs JSON `{ form, email, interests, item, … }` to `endpoint` (e.g. a serverless function forwarding to Klaviyo/Mailchimp).
+`site.commerce.checkout.provider: 'razorpay'`. This is Razorpay Standard Checkout, which covers UPI, cards, net banking and wallets.
 
-A success message is shown only when the endpoint returns HTTP 2xx.
+1. The browser sends the bag (product handles, variant ids and quantities) and the customer details to `/api/create-order`.
+2. The function **re-prices the bag from `site.config.js`**, then creates the Razorpay order for that amount in paise. Prices or totals sent by the browser are ignored.
+3. Razorpay Checkout opens with that `order_id`. When it succeeds, `/api/verify-payment` checks `HMAC-SHA256(order_id|payment_id, key_secret)`.
+4. Only after that check does the customer see the confirmation (`order.html`).
+5. The order, the customer's details and the delivery address are kept in the Razorpay order notes, and visible in the Razorpay dashboard.
 
-### Checkout & payments
-`site.commerce.checkout.provider`:
-- `'demo'` (current): a clearly labelled walk-through that validates details and states that **no order was placed and no payment was taken**.
-- `'shopify'`: set `shopifyDomain` and each variant's `shopifyVariantId`. Checkout redirects to a Shopify cart permalink (`/cart/<variant>:<qty>,…`).
-- `'custom'`: set `checkout.url` to your backend. It receives `{ customer, lines[] }` and must return `{ redirectUrl }` (for example a Razorpay/Cashfree/PayU hosted payment page or order-creation flow).
+If the keys are missing, the function answers 503. On a preview build, the checkout then says plainly that it's a preview, and that nothing was charged.
 
-For India, support **UPI**, cards and net banking (and decide on COD). Enable `buyNowEnabled` only after a real checkout works.
+Other providers:
+- `'demo'` is a labelled walk-through that never takes money.
+- `'shopify'` uses Shopify cart permalinks.
+
+**Cash on delivery** is off by default. Turning it on (`shipping.cod`) records COD orders as Netlify form submissions, which you confirm by hand.
+
+**Recommended next step:** order emails and fulfilment. Either use Razorpay's payment emails and webhooks, or move to Shopify or another OMS once volumes justify it.
+
+## Forms (Netlify Forms)
+
+`site.forms.provider: 'netlify'` covers the newsletter, early-access waitlist, notify-me, contact and COD orders.
+- The forms are rendered by JavaScript, so `netlify-forms.html` holds hidden copies that Netlify detects when it builds.
+- Submissions appear in Netlify → Forms, and can be emailed to you or exported.
+- Every form has a honeypot to stop spam bots.
+- The site shows success **only** when the endpoint returns 2xx. On a local preview it says nothing was sent.
+
+Other providers:
+- `'formspree'`, or `'custom'` (posts JSON to `endpoint`, for example a Brevo, Mailchimp or Klaviyo proxy).
+- `'none'`.
 
 ### Reviews
 `products[].reviews` is empty, so the PDP shows an honest "No reviews yet" state. Connect a reviews platform (e.g. Judge.me, Yotpo, Okendo) or add verified reviews. Never add invented reviews.
 
 ### Analytics
-Not included. Add your tag in `assets/js/app.js` once a privacy policy and consent approach are in place.
+Not included. Add your tag in `assets/js/app.js`, and name the tool in the privacy policy (`content/policies.js`).
+
+### Support
+When `contact.whatsapp` is set, a WhatsApp chat button appears on every page. The contact page shows customer care, the seller's details and the grievance officer.
+
+## Brand assets
+
+`assets/brand/` holds the logo system:
+- the **RŪH** wordmark, outlined from Bodoni Moda with a custom macron;
+- the eight-point jaali **star**;
+- the **Rūh by GentleCare** lockups, light and dark;
+- a 1080 px social avatar.
+
+They are pure vector, with no fonts needed. Regenerate them with `python tools/build_brand.py` (needs `pip install fonttools`). Usage rules are in `BRAND_DESIGN_SYSTEM.md` §11.
 
 ## Images
 
@@ -116,7 +212,11 @@ python tools/render/scenes.py all --samples 64
 python3 tools/build_images.py               # AVIF/WebP/JPEG at 480–2400 px + manifest
 ```
 
-Replace any render with real photography by saving it as `tools/render/out/<key>.png` and re-running `build_images.py`.
+**Real photography replaces renders one key at a time:**
+1. Save each photo as `assets-src/photography/<key>.jpg`.
+2. Run `python3 tools/build_images.py`.
+
+The "concept render" captions then disappear for those images. See `PHOTOGRAPHY_BRIEF.md`.
 
 ## Quality assurance
 
@@ -125,6 +225,9 @@ python3 -m http.server 8080 &              # from the project root
 cd qa && npm install                       # installs axe-core (dev only)
 node smoke.mjs                             # all pages × 1440/820/390 px; screenshots in qa/screens/
 node interactions.mjs                      # functional + accessibility checks (49 checks)
+node checkout.mjs                          # Razorpay checkout end to end (mocked gateway, real function code)
+node --test functions.test.mjs             # payment function unit tests
+node single-file.mjs                       # the dist/ single-file build
 node states.mjs                            # screenshots of menus, drawers, search, sticky bar
 node perf.mjs                              # page weight, LCP, CLS
 ```
@@ -144,5 +247,5 @@ Playwright is expected to be available (`npm i -D playwright` and `npx playwrigh
 ## Known limitations
 
 - Content is rendered client-side from `site.config.js`, which keeps editing simple but needs JavaScript. For production SEO, consider pre-rendering (e.g. moving to Shopify, Astro or Next.js using the same config and components) or using a host that pre-renders.
-- Concept renders are not product photography: no human/lifestyle imagery is included.
-- No real payments, accounts, order emails, inventory or reviews until integrations are connected.
+- Concept renders stay until real photography is supplied (see `PHOTOGRAPHY_BRIEF.md`).
+- Not built yet: customer accounts, order emails from the site, inventory tracking or reviews. Razorpay's dashboard and email receipts cover the first orders.

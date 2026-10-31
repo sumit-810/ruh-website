@@ -139,3 +139,22 @@ Both are SIL Open Font License and **self-hosted** (`assets/fonts/`, Latin + Lat
 ## 10. Brand voice (quick reference)
 
 Calm, warm, precise. Short sentences. Sensory nouns over adjectives. No exclamation marks, no superlatives, and no claims we cannot prove. Examples: "A softer light, worn on skin." · "Made to be returned to." · "One honest price."
+
+## 11. Logo & brand assets (Rūh by GentleCare)
+
+Generated as true vector outlines by `tools/build_brand.py` (no fonts needed), in `assets/brand/`:
+
+| File | Use |
+|---|---|
+| `ruh-wordmark.svg` | Primary logo: RŪH in Bodoni Moda, tracked 0.32em, with a custom macron bar (the font's hairline macron disappears at small sizes) |
+| `ruh-star.svg` | The **Rūh star**: the eight-point jaali star. Brand symbol for favicons, stickers, carton seals and pattern |
+| `ruh-lockup.svg` / `ruh-lockup-dark.svg` | Star + wordmark + "BY GENTLECARE": packaging back panels, shipping boxes, press, invoices |
+| `ruh-social-avatar.png` | 1080 × 1080 profile image (ivory mark on terracotta) for Instagram, WhatsApp Business and marketplaces |
+
+**Brand architecture.** **Rūh** is the consumer brand; **GentleCare** is the company. The endorsement reads "A GentleCare brand" or "by GentleCare" and is always secondary: small, tracked capitals, about 15% of the wordmark's cap height. GentleCare appears as the legal seller in the footer, product information (Marketed by), invoices and policies. Never set "GentleCare" larger than "Rūh" on consumer-facing surfaces.
+
+**Rules**
+- **Clear space:** at least the height of the macron gap (about 0.3 × cap height) on all sides; on packaging, at least the width of the "R".
+- **Minimum size:** wordmark 18 px tall on screen and 6 mm in print; the star alone 12 px and 3 mm.
+- **Colour:** cocoa on ivory (primary), ivory on kohl, or ivory on terracotta. The star may be terracotta or champagne while the wordmark stays one colour. Never recolour the wordmark in clay on a busy photograph.
+- **Don't:** re-typeset the wordmark from the font, stretch it, change the tracking, add effects, or place it on the jaali-light pattern where shadows cross the letters.

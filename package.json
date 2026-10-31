@@ -1,0 +1,14 @@
+{
+  "name": "ruh-website",
+  "private": true,
+  "description": "Rūh by GentleCare — D2C website (static site + Netlify Functions for Razorpay)",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "node tools/build_public.mjs",
+    "check": "node tools/launch_check.mjs",
+    "test": "node --test qa/functions.test.mjs",
+    "single-file": "node tools/build_single_file.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}

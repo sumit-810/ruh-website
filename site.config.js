@@ -19,23 +19,41 @@
  */
 
 export const site = {
-  /** Shows the preview badge + "placeholder" labels. Set false at launch. */
+  /**
+   * Preview mode shows the "Preview build" badge and labels placeholder
+   * content. Set to false only when `node tools/launch_check.mjs` passes.
+   * With previewMode false, anything still flagged provisional is hidden.
+   */
   previewMode: true,
 
   // ---------------------------------------------------------------------------
-  // Brand
+  // Company — the business that sells the products (seller / data fiduciary).
+  // Shown in the footer, product information, policies and structured data.
+  // ---------------------------------------------------------------------------
+  company: {
+    name: 'GentleCare',
+    legalName: null, // REQUIRED — registered name, e.g. 'GentleCare Private Limited'
+    registeredAddress: null, // REQUIRED — full registered office address
+    cin: null, // company identification number, if incorporated
+    gstin: null, // GST registration number
+    website: null, // e.g. 'https://www.your-domain.in' (used in policies and SEO)
+  },
+
+  // ---------------------------------------------------------------------------
+  // Brand — Rūh is a brand of the company above.
   // ---------------------------------------------------------------------------
   brand: {
-    name: 'Rūh', // PROVISIONAL working name — trademark clearance required
-    wordmark: 'RŪH', // text wordmark used in header/footer when no logo file is set
-    logoSrc: null, // e.g. 'assets/img/logo.svg' to use a supplied logo instead
-    tagline: 'Scent and skin, in softer light.', // PROVISIONAL
+    name: 'Rūh', // working brand name
+    trademarkCleared: false, // set true once the trademark search/filing is done
+    wordmark: 'RŪH', // text fallback when the SVG logo can't be used
+    logoSvg: 'assets/brand/ruh-wordmark.svg', // master logo file (also inlined in the header)
+    endorsement: 'A GentleCare brand', // shown in the footer and on Our Story
+    tagline: 'Scent and skin, in softer light.',
     description:
-      'Rūh is a body and skin care house making calm, sensory rituals for everyday life — beginning with Body Mist Nº 01.', // PROVISIONAL
+      'Rūh, a GentleCare brand, makes calm, sensory body and skin care rituals for everyday life — beginning with Body Mist Nº 01.',
     nameMeaning:
       'In Hindi and Urdu, rūh means soul. In the Indian attar tradition, a ruh is the purest distilled essence of a flower or root.',
     foundedYear: null, // e.g. 2026 — not shown until set
-    legalName: null, // e.g. 'Example Private Limited' — used in footer & product information
   },
 
   locale: {
@@ -47,27 +65,27 @@ export const site = {
   // Announcement bar (rotates). Keep each under ~60 characters.
   // ---------------------------------------------------------------------------
   announcements: [
-    { text: 'Body Mist Nº 01 — our first ritual, now available', href: 'product.html?p=body-mist-no-01' }, // PROVISIONAL
+    { text: 'Body Mist Nº 01 — our first ritual, now available', href: 'product.html?p=body-mist-no-01' },
     { text: 'Join the list for early access to what comes next', href: 'index.html#early-access' },
-    { text: 'Delivery across India — details at checkout', href: 'shipping-returns.html' }, // PROVISIONAL
+    { text: 'Secure checkout with UPI, cards and net banking', href: 'shipping-returns.html' },
   ],
 
   // ---------------------------------------------------------------------------
-  // Contact & social — null hides an item.
+  // Customer care & social — null hides an item.
   // ---------------------------------------------------------------------------
   contact: {
-    email: 'hello@example.com', // PROVISIONAL — replace with real inbox
-    phone: null, // e.g. '+91 00000 00000'
-    whatsapp: null, // e.g. '910000000000' (digits only)
-    hours: 'Monday to Saturday, 10am – 6pm IST', // PROVISIONAL
-    responseTime: 'We aim to reply within two working days.', // PROVISIONAL
-    address: null, // registered / grievance address — required before launch
-    grievanceOfficer: null, // { name, email } — required for Indian e-commerce
+    email: null, // REQUIRED — your business inbox, e.g. 'care@your-domain.in'
+    phone: null, // e.g. '+91 98xxxxxxxx'
+    whatsapp: null, // digits only, e.g. '9198xxxxxxxx' — shows a chat button when set
+    hours: 'Monday to Saturday, 10am – 6pm IST', // PROVISIONAL — confirm
+    responseTime: 'We reply within two working days.', // PROVISIONAL — confirm
+    /** Grievance officer (Consumer Protection (E-Commerce) Rules) — REQUIRED. */
+    grievanceOfficer: null, // { name: '…', designation: 'Grievance Officer', email: '…', phone: '…' }
   },
 
   social: {
-    instagram: null, // e.g. 'https://instagram.com/yourhandle'
-    handle: null, // e.g. '@yourhandle' — shown in the social section if set
+    instagram: null, // e.g. 'https://instagram.com/ruh.gentlecare'
+    handle: null, // e.g. '@ruh.gentlecare'
     pinterest: null,
     youtube: null,
     linkedin: null,
@@ -79,44 +97,58 @@ export const site = {
   commerce: {
     /**
      * checkout.provider:
-     *  'demo'    — clearly labelled demo page, no payment taken (current)
-     *  'shopify' — send the bag to a Shopify cart permalink (set shopifyDomain + variant ids)
-     *  'custom'  — POST the bag to `checkout.url` (your own backend / gateway)
+     *  'razorpay' — live payments via Razorpay (UPI, cards, net banking, wallets).
+     *               Needs the site deployed on Netlify with RAZORPAY_KEY_ID and
+     *               RAZORPAY_KEY_SECRET set (see README → Payments). Until the
+     *               payment server is reachable, preview builds fall back to a
+     *               clearly labelled demo and never take money.
+     *  'demo'     — always the labelled demo
+     *  'shopify'  — send the bag to a Shopify cart permalink (set shopifyDomain + variant ids)
      */
-    checkout: { provider: 'demo', url: null, shopifyDomain: null },
-    /** Shows "Buy now" on product pages. Only enable with a real checkout. */
-    buyNowEnabled: false,
+    checkout: { provider: 'razorpay', shopifyDomain: null },
+    /** Shows "Buy now" on product pages (skips the bag, goes to checkout). */
+    buyNowEnabled: true,
     maxQuantityPerItem: 6,
-    /** Free-shipping threshold in ₹, or null to hide the progress meter. */
-    freeShippingThreshold: null, // PROVISIONAL — e.g. 999
-    /** Short promises shown under the add-to-bag button. Empty array hides them. */
+    /** Short notes under Add to bag. `provisional` ones are hidden when previewMode is false. */
     serviceNotes: [
-      'Delivery timelines confirmed at checkout', // PROVISIONAL
-      'Secure payments via UPI, cards and net banking once checkout is connected', // PROVISIONAL
+      { text: 'Secure payment: UPI, cards, net banking and wallets via Razorpay' },
+      { text: 'Delivery timelines shown at checkout', provisional: true },
     ],
   },
 
-  /** Footer service band. `provisional: true` items are marked in preview mode. */
+  /**
+   * Delivery charges (server-side and in the bag). All amounts in ₹.
+   * flatRate null = free delivery on every order (launch check will remind you).
+   */
+  shipping: {
+    flatRate: null, // PROVISIONAL — e.g. 79
+    freeAbove: null, // PROVISIONAL — e.g. 999 (also drives the progress meter in the bag)
+    cod: { enabled: false, fee: 0, maxOrderValue: 3000 }, // cash on delivery via Netlify Forms
+    serviceableCountries: ['IN'],
+  },
+
+  /** Footer service band. `provisional` items are marked in preview and hidden in production. */
   servicePromises: [
-    { icon: 'gift', title: 'Gift-ready', text: 'Packaging details to be confirmed.', provisional: true },
+    { icon: 'lock', title: 'Secure checkout', text: 'UPI, cards, net banking and wallets, processed by Razorpay.' },
+    { icon: 'leaf', title: 'Full ingredient lists', text: 'Published for every product, in plain view.' },
     { icon: 'truck', title: 'Across India', text: 'Delivery partners and timelines to be confirmed.', provisional: true },
-    { icon: 'leaf', title: 'Full ingredient lists', text: 'Published for every product, in plain view.', provisional: true },
   ],
 
   // ---------------------------------------------------------------------------
-  // Forms (newsletter, waitlist, contact).
-  // provider: 'none' | 'formspree' | 'netlify' | 'custom'
-  //  - none:      validates, then tells the visitor plainly that nothing was sent
+  // Forms (newsletter, waitlist / notify me, contact, cash-on-delivery orders).
+  // provider: 'netlify' | 'formspree' | 'custom' | 'none'
+  //  - netlify:   Netlify Forms (submissions in the Netlify dashboard + email
+  //               notifications). Form definitions live in netlify-forms.html.
+  //               On a local preview nothing is sent and the visitor is told so.
   //  - formspree: POSTs JSON to `endpoint` (https://formspree.io/f/xxxx)
-  //  - netlify:   POSTs url-encoded data to '/' with form-name (Netlify Forms)
-  //  - custom:    POSTs JSON to `endpoint` (Klaviyo/Mailchimp proxy, your API…)
+  //  - custom:    POSTs JSON to `endpoint` (Klaviyo/Brevo/Mailchimp proxy, your API…)
+  //  - none:      validates, then says plainly that nothing was sent
   // A success message is shown ONLY when the endpoint responds with 2xx.
   // ---------------------------------------------------------------------------
   forms: {
-    provider: 'none',
+    provider: 'netlify',
     endpoint: null,
-    consentText:
-      'By joining, you agree to receive emails from us. Unsubscribe anytime. See our privacy policy.',
+    consentText: 'By joining, you agree to receive emails from Rūh by GentleCare. Unsubscribe anytime.',
   },
 
   analytics: { enabled: false }, // add your analytics snippet in assets/js/app.js when ready
@@ -494,6 +526,15 @@ export const content = {
         image: 'up_group_body',
       },
     ],
+    company: {
+      eyebrow: 'The company',
+      title: 'Made by *GentleCare.*',
+      text: [
+        'Rūh is a brand of GentleCare. The name is the standard we hold ourselves to: care that is gentle on skin, honest in what it says, and considered in how it is made.', // PROVISIONAL — confirm company wording
+        'GentleCare will grow Rūh one ritual at a time — body first, then face and lip — with every formula, ingredient list and price published in plain view.', // PROVISIONAL
+      ],
+      image: 'pack_angle',
+    },
     founderNote: {
       eyebrow: "A note from the founders",
       text: null, // PROVISIONAL — add the founders' own words here; hidden until set (a placeholder shows in preview mode)
@@ -515,58 +556,20 @@ export const content = {
     {
       group: 'Orders & delivery',
       items: [
-        { q: 'Where do you deliver?', a: 'Delivery coverage, partners and timelines will be confirmed before launch and shown at checkout.' }, // PROVISIONAL
-        { q: 'Which payment methods will you accept?', a: 'We plan to accept UPI, cards and net banking through a secure payment gateway. Payment options will be confirmed at launch.' }, // PROVISIONAL
+        { q: 'Where do you deliver?', a: 'Across India, to serviceable PIN codes. Dispatch and delivery times are on our Shipping & Returns page.' },
+        { q: 'Which payment methods do you accept?', a: 'UPI, credit and debit cards, net banking and wallets, processed securely by Razorpay. We never see or store your card or bank details.' },
+        { q: 'Can I cancel my order?', a: 'Yes — any time before it is dispatched. Write to us with your order reference and we refund the full amount to your original payment method.' },
         { q: 'Will someone call me to confirm payment?', a: 'We will never call or message you asking for a payment, OTP or card details outside our website. If this happens, please do not share any information and contact us.' },
       ],
     },
     {
       group: 'Returns',
       items: [
-        { q: 'What is your returns policy?', a: 'Our returns and refunds policy is being finalised. It will be published on the Shipping & Returns page before launch.' }, // PROVISIONAL
+        { q: 'Can I return a product?', a: 'Because these are personal-care products, we accept returns for items that arrive damaged, leaking, defective, incorrect or past their best-before date. Report the problem with photos within 48 hours of delivery and we will replace or refund it. Full details are on the Shipping & Returns page.' }, // PROVISIONAL — confirm window and change-of-mind policy
+        { q: 'I have a complaint. Who do I contact?', a: 'Write to customer care first. If you are not satisfied, our Grievance Officer acknowledges complaints within 48 hours and aims to resolve them within one month — contact details are on the Contact page.' },
       ],
     },
   ],
 
-  /** Legal/policy pages: rendered from these outlines until real text is supplied. */
-  policies: {
-    shipping: {
-      title: 'Shipping & Returns',
-      intro: 'This page will set out exactly how and when your order reaches you, and what happens if something is not right. The details below are placeholders to be completed before launch.',
-      sections: [
-        { h: 'Delivery areas', p: '[To be confirmed — e.g. all serviceable PIN codes in India.]' },
-        { h: 'Dispatch & delivery times', p: '[To be confirmed — dispatch time in working days, and typical delivery windows by region.]' },
-        { h: 'Shipping charges', p: '[To be confirmed — flat rate and/or free-shipping threshold.]' },
-        { h: 'Cash on delivery', p: '[To be confirmed — whether COD is offered and any charges.]' },
-        { h: 'Returns & refunds', p: '[To be confirmed — eligibility (e.g. damaged or incorrect items), time window, process and refund timelines.]' },
-        { h: 'Damaged or missing items', p: '[To be confirmed — how to report, evidence required, resolution time.]' },
-      ],
-    },
-    privacy: {
-      title: 'Privacy Policy',
-      intro: 'This policy will explain what personal data we collect, why, and how you can control it. It must be completed with legal advice (including India’s Digital Personal Data Protection Act, 2023) before launch.',
-      sections: [
-        { h: 'Who we are', p: '[Legal entity name, registered address and contact for privacy requests.]' },
-        { h: 'What we collect', p: '[e.g. contact details, delivery address, order history, device and analytics data.]' },
-        { h: 'How we use it', p: '[e.g. fulfilling orders, customer support, marketing with consent, fraud prevention.]' },
-        { h: 'Sharing', p: '[e.g. payment gateway, delivery partners, email provider — list processors.]' },
-        { h: 'Your rights', p: '[Access, correction, erasure, withdrawal of consent, grievance redressal.]' },
-        { h: 'Cookies & local storage', p: 'This website stores your bag and recently viewed items in your browser’s local storage so they persist between visits. [Add analytics/cookie details if used.]' },
-        { h: 'Grievance officer', p: '[Name, email and address of the grievance officer.]' },
-      ],
-    },
-    terms: {
-      title: 'Terms & Conditions',
-      intro: 'These terms will govern the use of this website and purchases made through it. They must be completed with legal advice before launch.',
-      sections: [
-        { h: 'About these terms', p: '[Entity name, applicability, acceptance.]' },
-        { h: 'Products & pricing', p: 'Prices are shown in Indian rupees and are inclusive of all taxes (MRP). [Add errors, availability and quantity limits clauses.]' },
-        { h: 'Orders & payment', p: '[Order acceptance, payment methods, cancellations.]' },
-        { h: 'Shipping & returns', p: 'See our Shipping & Returns page.' },
-        { h: 'Intellectual property', p: '[Ownership of content, imagery and trademarks.]' },
-        { h: 'Liability', p: '[Limitation of liability, product use and safety.]' },
-        { h: 'Governing law', p: '[Jurisdiction and dispute resolution.]' },
-      ],
-    },
-  },
+  // Policy pages (shipping, privacy, terms) live in content/policies.js.
 };

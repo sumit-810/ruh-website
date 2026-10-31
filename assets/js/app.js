@@ -12,7 +12,7 @@ import { renderHeader, setHeaderOverlay } from './components/header.js';
 import { renderFooter } from './components/footer.js';
 import { renderBag, addToBag } from './components/bag-drawer.js';
 import { renderSearch } from './components/search.js';
-import { reveal, previewBadge } from './components/misc.js';
+import { reveal, previewBadge, supportButton } from './components/misc.js';
 import { wireWaitlists } from './components/waitlist.js';
 import { closeActive } from './components/overlay.js';
 import { getProduct, getVariant } from './lib/catalog.js';
@@ -31,6 +31,7 @@ const pages = {
   policy: () => import('./pages/policy.js'),
   search: () => import('./pages/search.js'),
   checkout: () => import('./pages/checkout.js'),
+  order: () => import('./pages/order.js'),
   account: () => import('./pages/account.js'),
   notfound: () => import('./pages/notfound.js'),
 };
@@ -51,6 +52,7 @@ const FILES = {
   'terms.html': ['policy', 'terms'],
   'search.html': ['search'],
   'checkout.html': ['checkout'],
+  'order.html': ['order'],
   'account.html': ['account'],
   '404.html': ['notfound'],
 };
@@ -156,6 +158,7 @@ const start = async () => {
   renderBag();
   renderSearch();
   previewBadge();
+  supportButton();
 
   await renderPage();
   renderFooter(); // after the page, so the footer never paints high and then jumps

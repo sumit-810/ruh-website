@@ -101,3 +101,25 @@ Method: Playwright screenshots of our build (1440 / 820 / 390 px) placed side by
 | Accessibility | Aesop video pause controls | Pause control on the announcement rotator; focus traps; skip link | **Iterations from axe-core:** darkened `--cocoa-3` and `--clay` to pass AA on every surface; underlined in-text footer links; made the decorative footer wordmark incidental (pseudo-element); fixed a focus-loss bug where Escape stopped closing the bag after a quantity change. |
 
 **Remaining differences from the references (honest):** the references use real product and lifestyle photography with people, video, review counts and loyalty programmes. Our build uses concept renders, no human imagery, no reviews and no loyalty scheme, because none of those can be created without real assets or data. The structure for each is ready (gallery, reviews section, config slots).
+
+---
+
+## E. Phase 2 (commercial readiness): legal and integration sources
+
+These sources were consulted while drafting the policies and building the checkout and forms. Access was through Firecrawl search results or a scrape, and Context7 was used for the library documentation. **These are legal summaries, not legal advice.** The drafts in `content/policies.js` should be reviewed by a lawyer.
+
+| Source | Access | What it says | Used for |
+|---|---|---|---|
+| Consumer Protection (E-Commerce) Rules, 2020: official text (thc.nic.in PDF); summaries at snsco.in and PSL Chambers | Search results | Sellers and platforms must show their legal name, address, customer-care contacts and grievance officer details. Complaints are acknowledged within 48 hours and redressed within one month. Return, refund, exchange, delivery and payment terms must be disclosed | Contact page, footer, Terms → "Complaints and grievance redressal", Shipping & Returns |
+| Legal 500, "Rethinking e-commerce compliance: Consumer Protection (E-Commerce) (Amendment) Rules, 2026" | Scraped | The 2026 amendment: the grievance officer must give the complainant a copy of the complaint as recorded, and best-before/expiry disclosure is required for inventory sellers | The grievance wording on the Contact page and in the Terms; the "Best-before dates" section |
+| DPDP Rules 2025 (dpdpa.com text); Glocert DPDP compliance timeline; privacyglobal.org on privacy notices | Search results | The notice must be clear and stand-alone, listing the data, purpose and rights. Consent must be withdrawable as easily as it was given. Data principals have rights to access, correct, erase and nominate. Breaches go to the Board and affected people. Grievance redressal, then complaint to the Data Protection Board | Privacy Policy |
+| LKS Law on the Legal Metrology (Packaged Commodities) Amendment Rules (see §C) | Phase 1 | Rule 6(1) declarations must be shown online | Product information fields and launch-check blockers |
+| Razorpay Node SDK documentation (Context7 `/razorpay/razorpay-node`) | Context7 | Orders are created with the amount in paise. Payments are verified with HMAC-SHA256 of `order_id|payment_id` using the key secret | `netlify/functions/create-order.mjs`, `verify-payment.mjs` |
+| Netlify documentation (Context7 `/websites/netlify`) | Context7 | Modern ESM Functions (`export default async (req) => Response`, `config.path`). For Netlify Forms with JS-rendered forms: hidden static forms for build-time detection, a URL-encoded POST with `form-name`, and a honeypot | Functions, `netlify-forms.html`, `assets/js/lib/forms.js` |
+
+**Not verified in this session:**
+- No current courier rates or serviceability.
+- No Razorpay pricing or MDR.
+- No trademark availability for "Rūh". This needs a search on the IP India public search and/or a trademark attorney.
+
+These are listed as decisions or blockers in `LAUNCH_CHECKLIST.md` and are not presented as facts on the site.

@@ -1,6 +1,6 @@
 import { site, content } from '../../../site.config.js';
 import { esc, rich, icon, prov, money, setTitle, setMeta } from '../lib/util.js';
-import { picture, artPicture } from '../lib/images.js';
+import { picture, artPicture, isRender } from '../lib/images.js';
 import { getProduct, productUrl, defaultVariant } from '../lib/catalog.js';
 import { tile } from '../components/cards.js';
 import { priceRow, buyBox, wireBuy, pyramid, factRows, benefitsList } from '../components/product-blocks.js';
@@ -16,10 +16,11 @@ export default function home(main) {
   setTitle('');
   setMeta(site.brand.description);
 
+  const heroRender = p.imageDisclaimer && (isRender(h.hero.image) || isRender(h.hero.imageMobile));
   main.innerHTML = `
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero__media">${artPicture({ wide: h.hero.image, tall: h.hero.imageMobile, alt: h.hero.imageAlt, priority: true })}
-    ${p.imageDisclaimer ? `<span class="caption hero__caption">${esc(p.imageDisclaimer)}</span>` : ''}</div>
+    ${heroRender ? `<span class="caption hero__caption">${esc(p.imageDisclaimer)}</span>` : ''}</div>
   <div class="hero__content">
     <p class="eyebrow">${esc(h.hero.eyebrow)}</p>
     <h1 class="hero__title" id="hero-title">${rich(h.hero.title)}</h1>
@@ -29,7 +30,7 @@ export default function home(main) {
       <a class="link" href="${esc(h.hero.secondary.href)}">${esc(h.hero.secondary.label)} ${icon.arrow}</a>
     </div>
   </div>
-  <div class="hero__meta" aria-hidden="true"><span>Nº 01 — ${esc(p.scentName || '')}</span>${p.imageDisclaimer ? `<span>${esc(p.imageDisclaimer)}</span>` : ''}</div>
+  <div class="hero__meta" aria-hidden="true"><span>Nº 01 — ${esc(p.scentName || '')}</span>${heroRender ? `<span>${esc(p.imageDisclaimer)}</span>` : ''}</div>
 </section>
 
 <section class="section" aria-labelledby="intro-title">
@@ -46,7 +47,7 @@ export default function home(main) {
 <section class="section section--limewash" aria-labelledby="featured-title" id="featured">
   <div class="container feature">
     <div class="feature__gallery reveal">
-      <a class="media" href="${productUrl(p)}" aria-label="View ${esc(p.name)}">${picture(p.images[1].key, { alt: p.images[1].alt, sizes: '(min-width: 900px) 30vw, 100vw' })}${p.imageDisclaimer ? `<span class="caption">Concept render</span>` : ''}</a>
+      <a class="media" href="${productUrl(p)}" aria-label="View ${esc(p.name)}">${picture(p.images[1].key, { alt: p.images[1].alt, sizes: '(min-width: 900px) 30vw, 100vw' })}${p.imageDisclaimer && isRender(p.images[1].key) ? `<span class="caption">Concept render</span>` : ''}</a>
       <div class="media">${picture(p.images[0].key, { alt: p.images[0].alt, sizes: '(min-width: 900px) 25vw, 50vw' })}</div>
       <div class="media">${picture(p.images[3].key, { alt: p.images[3].alt, sizes: '(min-width: 900px) 25vw, 50vw' })}</div>
     </div>
@@ -155,4 +156,23 @@ export default function home(main) {
 
   wireBuy(main, p);
   wireWaitlists(main);
+  organizationLd();
 }
+
+/** Structured data: GentleCare as the organisation behind the Rūh brand. */
+const organizationLd = () => {
+  if (document.getElementById('ld-org')) return;
+  const co = site.company;
+  const s = document.createElement('script');
+  s.type = 'application/ld+json';
+  s.id = 'ld-org';
+  s.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: co.legalName || co.name,
+    ...(co.website ? { url: co.website } : {}),
+    brand: { '@type': 'Brand', name: site.brand.name, slogan: site.brand.tagline },
+    ...(site.contact.email ? { contactPoint: { '@type': 'ContactPoint', contactType: 'customer service', email: site.contact.email, areaServed: 'IN' } } : {}),
+  });
+  document.head.append(s);
+};

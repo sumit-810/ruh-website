@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en-IN">
+<head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Form definitions</title></head>
+<body>
+<!--
+  Netlify Forms definitions. The site's forms are rendered by JavaScript, so
+  Netlify can't see them at deploy time; these hidden copies register each
+  form and its fields. Keep field names in sync with the JS forms.
+  Submissions: Netlify dashboard → Forms (set up email notifications there).
+-->
+<form name="early-access" data-netlify="true" netlify-honeypot="bot-field" hidden>
+  <input name="email"><input name="interests"><input name="item"><input name="bot-field">
+</form>
+<form name="notify-me" data-netlify="true" netlify-honeypot="bot-field" hidden>
+  <input name="email"><input name="interests"><input name="item"><input name="bot-field">
+</form>
+<form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden>
+  <input name="name"><input name="email"><input name="topic"><textarea name="message"></textarea><input name="bot-field">
+</form>
+<form name="cod-order" data-netlify="true" netlify-honeypot="bot-field" hidden>
+  <input name="reference"><input name="name"><input name="email"><input name="phone">
+  <input name="address1"><input name="address2"><input name="city"><input name="state"><input name="pin">
+  <input name="items"><input name="total"><input name="bot-field">
+</form>
+</body>
+</html>

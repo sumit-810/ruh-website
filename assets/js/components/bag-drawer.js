@@ -2,18 +2,19 @@ import { site } from '../../../site.config.js';
 import { esc, icon, money, $, $$, announce, toast } from '../lib/util.js';
 import { bag } from '../lib/cart.js';
 import { productUrl } from '../lib/catalog.js';
+import { quote } from '../lib/pricing.js';
 import { thumb } from '../lib/images.js';
 import { makeOverlay } from './overlay.js';
 
 let overlay;
 
-const meter = (subtotal) => {
-  const t = site.commerce.freeShippingThreshold;
-  if (!t) return '';
-  const left = Math.max(0, t - subtotal);
-  const pct = Math.min(100, Math.round((subtotal / t) * 100));
+const meter = () => {
+  const q = quote(bag.lines().map((l) => ({ handle: l.handle, variantId: l.variantId, qty: l.qty })));
+  const { freeAbove, flatRate } = site.shipping;
+  if (!flatRate || !freeAbove) return '';
+  const pct = Math.min(100, Math.round((q.subtotal / freeAbove) * 100));
   return `<div class="cart-meter" role="status">
-    <span>${left > 0 ? `You are ${money(left)} away from complimentary delivery.` : 'Your order qualifies for complimentary delivery.'}</span>
+    <span>${q.freeDeliveryRemaining > 0 ? `You are ${money(q.freeDeliveryRemaining)} away from free delivery.` : 'Your order qualifies for free delivery.'}</span>
     <div class="cart-meter__bar" aria-hidden="true"><span style="width:${pct}%"></span></div>
   </div>`;
 };
@@ -35,7 +36,7 @@ const body = () => {
       <a class="link" href="shop.html">See what’s coming ${icon.arrow}</a>
     </div>`;
   }
-  return `${meter(bag.subtotal())}
+  return `${meter()}
   <ul style="list-style:none;margin:0;padding:0">
     ${lines
       .map(
@@ -62,11 +63,16 @@ const foot = () => {
   const lines = bag.lines();
   if (!lines.length) return '';
   const demo = site.commerce.checkout.provider === 'demo';
+  const { flatRate } = site.shipping;
   return `
   <div class="cart-totals"><span>Subtotal</span><strong>${money(bag.subtotal())}</strong></div>
-  <p class="cart-note">Prices are MRP, inclusive of all taxes. Delivery is calculated at checkout.</p>
+  <p class="cart-note">Prices are MRP, inclusive of all taxes. ${flatRate ? 'Delivery is calculated at checkout.' : 'Free delivery.'}</p>
   <a class="btn btn--block" href="checkout.html">${icon.lock}<span>Checkout</span></a>
-  ${demo ? `<p class="demo-note">${icon.info}<span>Payments are not connected yet. Checkout is a clearly labelled demo — no order is placed and no payment is taken.</span></p>` : ''}`;
+  ${
+    demo
+      ? `<p class="demo-note">${icon.info}<span>Payments are switched off in the site settings — checkout is a labelled demo and no payment is taken.</span></p>`
+      : '<p class="cart-note" style="text-align:center">Secure payment by Razorpay · UPI, cards, net banking, wallets</p>'
+  }`;
 };
 
 const render = () => {

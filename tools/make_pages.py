@@ -11,9 +11,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BRAND = "Rūh"  # fallback only; JS sets the real title from site.config.js
+HOME_TITLE = "Rūh by GentleCare — Scent and skin, in softer light"
 
 PAGES = [
-    ("index.html", "home", None, f"{BRAND} — Scent and skin, in softer light", "A body and skin care house making calm, sensory rituals — beginning with Body Mist Nº 01."),
+    ("index.html", "home", None, HOME_TITLE, "Rūh, a GentleCare brand, makes calm, sensory body and skin care rituals — beginning with Body Mist Nº 01."),
     ("shop.html", "shop", None, f"Shop all — {BRAND}", "Shop Body Mist Nº 01 and discover the body, face and lip care in development."),
     ("product.html", "product", None, f"Body Mist Nº 01 — {BRAND}", "A light veil of scent for the hours between."),
     ("collection.html", "collection", None, f"Collection — {BRAND}", "Body, face and lip care."),
@@ -27,6 +28,7 @@ PAGES = [
     ("terms.html", "policy", "terms", f"Terms & Conditions — {BRAND}", "Terms of use."),
     ("search.html", "search", None, f"Search — {BRAND}", "Search the site."),
     ("checkout.html", "checkout", None, f"Checkout — {BRAND}", "Checkout."),
+    ("order.html", "order", None, f"Order confirmed — {BRAND}", "Order confirmation."),
     ("account.html", "account", None, f"Account — {BRAND}", "Your account."),
     ("404.html", "notfound", None, f"Page not found — {BRAND}", "Page not found."),
 ]

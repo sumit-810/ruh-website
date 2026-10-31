@@ -4,3 +4,4 @@ qa/node_modules/
 tools/render/out/
 dist/
 .DS_Store
+public/

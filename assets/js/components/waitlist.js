@@ -11,6 +11,7 @@ export const waitlistForm = ({ interests = [], preset = [], item = null, cta = '
   const id = uid('wl');
   return `<form class="waitlist${dark ? ' on-dark' : ''}" data-waitlist data-form-name="${item ? 'notify-me' : 'early-access'}">
     ${item ? `<input type="hidden" name="item" value="${esc(item)}">` : ''}
+    <p class="visually-hidden" aria-hidden="true"><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
     ${
       interests.length
         ? `<fieldset class="chips" style="margin-bottom:6px"><legend class="visually-hidden">I’m interested in</legend>${interests

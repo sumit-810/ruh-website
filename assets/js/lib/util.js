@@ -66,7 +66,7 @@ export const prov = (on, label = 'Placeholder', block = false, style = '') =>
   site.previewMode && on ? `<span class="prov${block ? ' prov--block' : ''}"${style ? ` style="${style}"` : ''} title="Provisional content — replace before launch (see PRODUCT_CONFIGURATION.md)">${esc(label)}</span>` : '';
 
 export const setTitle = (t) => {
-  document.title = t ? `${t} — ${site.brand.name}` : `${site.brand.name} — ${site.brand.tagline}`;
+  document.title = t ? `${t} — ${site.brand.name}` : `${site.brand.name} by ${site.company.name} — ${site.brand.tagline}`;
 };
 
 export const setMeta = (description) => {

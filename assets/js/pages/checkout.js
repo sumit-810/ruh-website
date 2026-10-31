@@ -1,17 +1,52 @@
 import { site } from '../../../site.config.js';
-import { esc, money, icon, setTitle, $ } from '../lib/util.js';
+import { esc, money, icon, setTitle, $, navigate } from '../lib/util.js';
 import { thumb } from '../lib/images.js';
 import { bag } from '../lib/cart.js';
-import { validate, liveValidate } from '../lib/forms.js';
+import { quote } from '../lib/pricing.js';
+import { validate, liveValidate, send } from '../lib/forms.js';
 import { field } from '../lib/fields.js';
+import { storage } from '../lib/storage.js';
 
 const STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
 
+const RAZORPAY_JS = 'https://checkout.razorpay.com/v1/checkout.js';
+const LAST_ORDER = 'ruh.lastOrder.v1';
+
+const loadRazorpay = () =>
+  window.Razorpay
+    ? Promise.resolve(window.Razorpay)
+    : new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = RAZORPAY_JS;
+        s.onload = () => (window.Razorpay ? resolve(window.Razorpay) : reject(new Error('razorpay-missing')));
+        s.onerror = () => reject(new Error('razorpay-unreachable'));
+        document.head.append(s);
+      });
+
+const postJson = async (url, body) => {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    /* non-JSON (e.g. a static server answering 404/501) */
+  }
+  return { ok: res.ok, status: res.status, data };
+};
+
+/** Save what the confirmation page shows, then empty the bag. */
+const complete = (order) => {
+  storage.set(LAST_ORDER, { ...order, placedAt: new Date().toISOString() });
+  bag.clear();
+  navigate(`order.html?ref=${encodeURIComponent(order.reference)}`);
+};
+
 /**
  * Checkout.
- * - provider 'demo': a clearly labelled demo — validates details, never takes payment, never claims an order was placed.
- * - provider 'shopify': redirects to a Shopify cart permalink built from variant ids.
- * - provider 'custom': POSTs the bag + details to commerce.checkout.url, which should return { redirectUrl }.
+ * - 'razorpay': server prices the bag (/api/create-order), Razorpay Checkout takes payment,
+ *   /api/verify-payment checks the signature before the order is confirmed.
+ * - Cash on delivery (if enabled in site.shipping.cod): order is sent as a Netlify Form for manual confirmation.
+ * - When the payment server isn't reachable on a preview build, a clearly labelled demo runs instead — no money moves.
  */
 export default function checkout(main) {
   setTitle('Checkout');
@@ -28,15 +63,17 @@ export default function checkout(main) {
     return;
   }
 
-  const demo = cfg.provider === 'demo';
-  const subtotal = bag.subtotal();
+  const cod = site.shipping.cod || {};
+  const plain = lines.map((l) => ({ handle: l.handle, variantId: l.variantId, qty: l.qty }));
+  const demoOnly = cfg.provider === 'demo';
+
   main.innerHTML = `
 <div class="container">
   <header class="page-hero" style="padding-bottom:32px">
     <p class="eyebrow">Checkout</p>
     <h1 class="page-hero__title">Almost <em>yours.</em></h1>
   </header>
-  ${demo ? `<div class="notice" style="margin-bottom:48px" role="note">${icon.info}<span><strong>Demo checkout.</strong> Payments are not connected yet. You can review the flow, but no order will be placed, nothing will be charged and your details are not stored or sent anywhere.</span></div>` : ''}
+  ${demoOnly ? `<div class="notice" style="margin-bottom:48px" role="note">${icon.info}<span><strong>Demo checkout.</strong> Payments are switched off in the site settings. No order will be placed and nothing will be charged.</span></div>` : ''}
   <div class="checkout">
     <form data-checkout novalidate>
       <fieldset>
@@ -59,67 +96,141 @@ export default function checkout(main) {
       </fieldset>
       <fieldset>
         <legend>Payment</legend>
+        <div class="chips" role="radiogroup" aria-label="Payment method" style="margin-bottom:16px">
+          <label class="chip"><input type="radio" name="method" value="online" checked><span>Pay online</span></label>
+          ${cod.enabled ? `<label class="chip"><input type="radio" name="method" value="cod"><span>Cash on delivery${cod.fee ? ` (+${money(cod.fee)})` : ''}</span></label>` : ''}
+        </div>
         <div class="pay-placeholder">
-          <strong style="color:var(--cocoa);font-weight:500">${demo ? 'Payment gateway not connected' : 'Secure payment'}</strong>
-          <span>${demo ? 'When a gateway (for example Razorpay, Cashfree, PayU or Shopify Payments) is connected, customers will choose UPI, cards, net banking or wallets here.' : 'You will be redirected to our secure payment partner.'}</span>
+          <strong style="color:var(--cocoa);font-weight:500">Secure payment by Razorpay</strong>
+          <span>Choose UPI, cards, net banking or wallets in the next step. We never see or store your card details.</span>
           <div class="pay-methods">${['UPI', 'Cards', 'Net banking', 'Wallets'].map((m) => `<span class="tag tag--outline">${m}</span>`).join('')}</div>
         </div>
       </fieldset>
-      <button class="btn btn--block" type="submit">${icon.lock}<span>${demo ? 'Review demo order' : `Pay ${money(subtotal)}`}</span></button>
+      <button class="btn btn--block" type="submit" data-pay>${icon.lock}<span data-pay-label></span></button>
+      <p class="small muted" style="margin-top:12px">By placing your order you agree to our <a class="text-link" href="terms.html">terms</a> and <a class="text-link" href="shipping-returns.html">shipping &amp; returns policy</a>. Sold by ${esc(site.company.legalName || site.company.name)}.</p>
       <p class="form-status" data-status role="status" aria-live="polite" hidden style="margin-top:16px"></p>
     </form>
     <aside class="checkout__summary" aria-label="Order summary">
-      <div class="summary">
-        <h2 class="t-md" style="font-size:1.5rem">Order summary</h2>
-        <ul style="list-style:none;margin:0;padding:0">
-          ${lines
-            .map(
-              (l) => `<li class="line"><div class="line__media"><img src="${thumb(l.product.images[0].key)}" alt="" width="88" height="110"></div><div><div class="line__top"><span class="line__name">${esc(l.product.name)}</span><span>${money(l.lineTotal)}</span></div><p class="line__meta">${esc(l.variant.size)} · Qty ${l.qty}</p></div></li>`
-            )
-            .join('')}
-        </ul>
-        <div class="summary__row"><span>Subtotal (MRP, incl. taxes)</span><span>${money(subtotal)}</span></div>
-        <div class="summary__row"><span>Delivery</span><span>To be confirmed</span></div>
-        <div class="summary__total"><span>Total</span><strong>${money(subtotal)}</strong></div>
-        <p class="cart-note">Delivery charges, if any, will be shown here once shipping rates are configured.</p>
-        <a class="link" href="#" data-open-bag>Edit bag</a>
-      </div>
+      <div class="summary" data-summary></div>
     </aside>
   </div>
 </div>`;
 
   const form = $('[data-checkout]', main);
   const status = $('[data-status]', main);
+  const payBtn = $('[data-pay]', main);
+  const method = () => new FormData(form).get('method') || 'online';
+  const say = (tone, text) => {
+    status.hidden = false;
+    status.dataset.tone = tone;
+    status.textContent = text;
+  };
+
+  const renderSummary = () => {
+    const q = quote(plain, { paymentMethod: method() });
+    $('[data-summary]', main).innerHTML = `
+      <h2 class="t-md" style="font-size:1.5rem">Order summary</h2>
+      <ul style="list-style:none;margin:0;padding:0">
+        ${lines.map((l) => `<li class="line"><div class="line__media"><img src="${thumb(l.product.images[0].key)}" alt="" width="88" height="110"></div><div><div class="line__top"><span class="line__name">${esc(l.product.name)}</span><span>${money(l.lineTotal)}</span></div><p class="line__meta">${esc(l.variant.size)} · Qty ${l.qty}</p></div></li>`).join('')}
+      </ul>
+      <div class="summary__row"><span>Subtotal (MRP, incl. taxes)</span><span>${money(q.subtotal)}</span></div>
+      <div class="summary__row"><span>Delivery</span><span>${q.delivery ? money(q.delivery) : 'Free'}</span></div>
+      ${q.codFee ? `<div class="summary__row"><span>Cash on delivery fee</span><span>${money(q.codFee)}</span></div>` : ''}
+      <div class="summary__total"><span>Total</span><strong>${money(q.total)}</strong></div>
+      ${q.freeDeliveryRemaining ? `<p class="cart-note">Add ${money(q.freeDeliveryRemaining)} more for free delivery.</p>` : ''}
+      <a class="link" href="#" data-open-bag>Edit bag</a>`;
+    $('[data-pay-label]', main).textContent = method() === 'cod' ? `Place order — ${money(q.total)}` : `Pay ${money(q.total)}`;
+    return q;
+  };
+  form.addEventListener('change', (e) => e.target.name === 'method' && renderSummary());
+  renderSummary();
   liveValidate(form);
+
+  const customer = () => {
+    const d = Object.fromEntries(new FormData(form));
+    delete d.method;
+    return d;
+  };
+
+  const runDemo = (why) =>
+    say(
+      'info',
+      `${why} No order has been placed and nothing was charged.`
+    );
+
+  const payOnline = async () => {
+    if (demoOnly) return runDemo('Demo complete — your details are valid.');
+    let created;
+    try {
+      created = await postJson('/api/create-order', { lines: plain, customer: customer() });
+    } catch {
+      created = { ok: false, status: 0 };
+    }
+    if (!created.ok) {
+      const code = created.data?.error;
+      if (code === 'invalid-bag') return say('error', 'Something in your bag is no longer available. Please review your bag and try again.');
+      if (code === 'invalid-customer') return say('error', 'Please check your contact and delivery details and try again.');
+      if (site.previewMode && (created.status === 0 || created.status === 404 || created.status === 405 || created.status === 501 || code === 'payments-not-configured'))
+        return runDemo('Preview: online payment runs through Razorpay on the live site, and the payment server isn’t connected on this preview.');
+      return say('error', 'We couldn’t start the payment. Nothing has been charged — please try again in a moment.');
+    }
+    let Razorpay;
+    try {
+      Razorpay = await loadRazorpay();
+    } catch {
+      return say('error', 'The payment window couldn’t load. Please check your connection and try again. Nothing has been charged.');
+    }
+    const o = created.data;
+    const c = customer();
+    const rzp = new Razorpay({
+      key: o.keyId,
+      order_id: o.orderId,
+      amount: o.amount,
+      currency: o.currency,
+      name: o.merchant.name,
+      description: o.merchant.description,
+      prefill: { name: c.name, email: c.email, contact: c.phone },
+      notes: { receipt: o.receipt },
+      theme: { color: '#2e231d' },
+      modal: { ondismiss: () => say('info', 'Payment window closed. Nothing has been charged — you can try again whenever you’re ready.') },
+      handler: async (response) => {
+        say('info', 'Confirming your payment…');
+        let verified;
+        try {
+          verified = await postJson('/api/verify-payment', response);
+        } catch {
+          verified = { ok: false };
+        }
+        if (verified.ok && verified.data?.verified) {
+          complete({ reference: verified.data.receipt || o.receipt, paymentId: response.razorpay_payment_id, method: 'online', items: o.quote.items, total: o.quote.total, delivery: o.quote.delivery, email: c.email });
+        } else {
+          say('error', `We received a response from the payment provider but couldn’t confirm it. Please don’t pay again — contact us with this reference: ${o.receipt}.`);
+        }
+      },
+    });
+    rzp.on('payment.failed', (r) => say('error', `Payment failed${r?.error?.description ? `: ${r.error.description}` : ''}. Nothing has been charged — please try again or use another method.`));
+    rzp.open();
+  };
+
+  const placeCod = async () => {
+    const q = quote(plain, { paymentMethod: 'cod' });
+    if (q.errors.length) return say('error', q.errors[0]);
+    const reference = `RUH-COD-${Date.now().toString(36).toUpperCase()}`;
+    const c = customer();
+    const result = await send('cod-order', { ...c, reference, items: q.items.map((i) => `${i.name} (${i.size}) x${i.qty}`).join('; '), total: String(q.total) });
+    if (result.ok) return complete({ reference, method: 'cod', items: q.items, total: q.total, delivery: q.delivery, email: c.email });
+    if (result.reason === 'local-preview' || result.reason === 'not-configured') return runDemo('Preview: cash-on-delivery orders are recorded through Netlify Forms on the live site.');
+    say('error', 'We couldn’t place your order. Nothing has been charged — please try again.');
+  };
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validate(form)) return;
-    status.hidden = false;
-    if (demo) {
-      status.dataset.tone = 'info';
-      status.textContent = 'Demo complete — your details are valid. No order has been placed and no payment was taken, because payments are not connected yet.';
-      return;
+    payBtn.disabled = true;
+    try {
+      await (method() === 'cod' ? placeCod() : payOnline());
+    } finally {
+      payBtn.disabled = false;
     }
-    if (cfg.provider === 'custom' && cfg.url) {
-      try {
-        const res = await fetch(cfg.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer: Object.fromEntries(new FormData(form)), lines: lines.map((l) => ({ sku: l.variant.sku || l.variant.id, qty: l.qty })) }),
-        });
-        const data = res.ok ? await res.json() : null;
-        if (data?.redirectUrl) {
-          location.href = data.redirectUrl;
-          return;
-        }
-      } catch {
-        /* fall through */
-      }
-      status.dataset.tone = 'error';
-      status.textContent = 'We couldn’t start payment. Nothing has been charged — please try again.';
-      return;
-    }
-    status.dataset.tone = 'error';
-    status.textContent = 'Checkout is not configured. Nothing has been charged.';
   });
 }

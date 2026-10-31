@@ -35,6 +35,19 @@ export default function story(main) {
   </div>
 </section>
 <section class="section">
+  <div class="container">
+    <article class="chapter reveal">
+      <div class="media chapter__media">${picture(s.company.image, { alt: `${site.brand.name} Body Mist Nº 01`, sizes: '(min-width: 760px) 45vw, 100vw' })}</div>
+      <div>
+        <p class="eyebrow">${esc(s.company.eyebrow)}</p>
+        <h2>${rich(s.company.title)}</h2>
+        ${s.company.text.map((t) => `<p>${esc(t)}</p>`).join('')}
+        ${prov(true, 'Company wording to confirm', true)}
+      </div>
+    </article>
+  </div>
+</section>
+<section class="section section--limewash">
   <div class="container container--narrow">
     ${
       note.text
