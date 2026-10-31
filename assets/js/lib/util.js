@@ -61,12 +61,8 @@ export const debounce = (fn, ms = 200) => {
 let _id = 0;
 export const uid = (p = 'id') => `${p}-${++_id}`;
 
-/** "Placeholder" marker, rendered only in preview mode. */
-export const prov = (on, label = 'Placeholder', block = false, style = '') =>
-  site.previewMode && on ? `<span class="prov${block ? ' prov--block' : ''}"${style ? ` style="${style}"` : ''} title="Provisional content — replace before launch (see PRODUCT_CONFIGURATION.md)">${esc(label)}</span>` : '';
-
 export const setTitle = (t) => {
-  document.title = t ? `${t} — ${site.brand.name}` : `${site.brand.name} by ${site.company.name} — ${site.brand.tagline}`;
+  document.title = t ? `${t} — ${site.brand.name}` : `${site.brand.name} — ${site.brand.tagline}`;
 };
 
 export const setMeta = (description) => {
@@ -146,7 +142,8 @@ export const icon = {
   lock: svg('<rect x="5" y="10.5" width="14" height="10"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'),
   pause: '<svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M4 2.5v9M10 2.5v9" stroke="currentColor" stroke-width="1.4"/></svg>',
   play: '<svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M4 2.5 11 7l-7 4.5z" fill="currentColor"/></svg>',
-  star: '<svg class="star" viewBox="0 0 10 10" aria-hidden="true" focusable="false"><path fill="currentColor" d="M5 0l1.2 2.1L8.5 1.5 7.9 3.8 10 5 7.9 6.2l.6 2.3-2.3-.6L5 10 3.8 7.9l-2.3.6.6-2.3L0 5l2.1-1.2-.6-2.3 2.3.6z"/></svg>',
+  eye: svg('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
+  bell: svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'),
   instagram: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7v.01"/>'),
   pinterest: svg('<circle cx="12" cy="12" r="9"/><path d="M11 8.5c3-1 5 .5 5 3 0 2.5-1.6 4-3.3 4-1 0-1.6-.6-1.6-.6L9.5 21"/>'),
   youtube: svg('<rect x="2.5" y="5.5" width="19" height="13" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/>'),

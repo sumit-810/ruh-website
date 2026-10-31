@@ -1,5 +1,9 @@
 # Research Evidence Log
 
+> **Note (31 Oct 2026):** this log comes from the first research phase, carried out while the brand used a retired working name. The brand is now **Gentle Company**. The market, pricing and legal evidence still applies.
+> - The current competitor study and design direction are in [`RESEARCH_AND_DESIGN_STRATEGY.md`](RESEARCH_AND_DESIGN_STRATEGY.md).
+> - Section D compares the *first* implementation, which has since been redesigned.
+
 Companion to `RESEARCH_AND_BRAND_STRATEGY.md`. This log records **what was actually accessed**, how, and what was observed. Findings feed directly into the design decisions noted in the last column.
 
 Research date: **30 October 2026** (prices and promotions were observed during the Indian Diwali sale period, so many "sale" prices are below MRP).
@@ -120,6 +124,6 @@ These sources were consulted while drafting the policies and building the checko
 **Not verified in this session:**
 - No current courier rates or serviceability.
 - No Razorpay pricing or MDR.
-- No trademark availability for "Rūh". This needs a search on the IP India public search and/or a trademark attorney.
+- No trademark availability for the brand name (now "Gentle Company"). This needs a search on the IP India public search and/or a trademark attorney.
 
 These are listed as decisions or blockers in `LAUNCH_CHECKLIST.md` and are not presented as facts on the site.

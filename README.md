@@ -1,251 +1,144 @@
-# Rūh by GentleCare: Website (pre-launch build)
+# Gentle Company — Website
 
-A premium, research-led D2C website for **Rūh**, the skincare and body-care brand of **GentleCare**. It launches in India with **Body Mist Nº 01**, and shows body, face and lip care as **Coming Soon** collections.
+The D2C website for **Gentle Company**, a body and skin care brand for India. It launches with **Body Mist Nº 01**; the body, face and lip care range is shown with honest status labels.
 
-> **Status:** commercially wired, content still in preview.
->
-> **Already wired:**
-> - Real **Razorpay** checkout. Prices are worked out on the server and every payment's signature is verified.
-> - **Netlify Forms** for the newsletter, waitlist, contact and COD orders.
-> - India-specific policy drafts.
-> - A vector logo system.
->
-> **Still provisional, and labelled on the site while `previewMode` is on:**
-> - The business details only GentleCare can supply.
-> - The fragrance notes, ingredients and claims.
-> - The concept-render imagery.
->
-> `node tools/launch_check.mjs` lists exactly what is left. See [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md).
+- **Product-first and photography-led.** Every product is shown in Gentle Company's packaging system.
+- **No placeholders, ever.** Anything unconfirmed (price, size, notes, ingredients, company details) is simply hidden until it's filled in.
+- **Shop opens from config.** When the shop is enabled and a price is confirmed, Razorpay checkout appears. Until then, product pages offer **Notify me**, which posts to Brevo through `/api/subscribe`.
 
 ## Documents
 
 | File | Contents |
 |---|---|
-| [`RESEARCH_AND_BRAND_STRATEGY.md`](RESEARCH_AND_BRAND_STRATEGY.md) | Competitor analysis, benchmarking, Indian market insights, positioning, visual direction, page structures, sources |
-| [`RESEARCH_EVIDENCE.md`](RESEARCH_EVIDENCE.md) | Log of every page studied (URL, pattern, why it works, how we adapted it) and research limitations |
-| [`BRAND_DESIGN_SYSTEM.md`](BRAND_DESIGN_SYSTEM.md) | Colours (with contrast ratios), typography, spacing, components, imagery, motion, mobile rules |
-| [`PRODUCT_CONFIGURATION.md`](PRODUCT_CONFIGURATION.md) | Every editable value, what is provisional, and what the business must supply |
-| [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md) | Business details, product facts, payments, forms, policies and go-live steps, in order |
-| [`PHOTOGRAPHY_BRIEF.md`](PHOTOGRAPHY_BRIEF.md) | Shot list, look, technical specs, and how photos replace the renders |
-| [`IMPLEMENTATION_REPORT.md`](IMPLEMENTATION_REPORT.md) | What was built and tested, in both phases |
+| [`RESEARCH_AND_DESIGN_STRATEGY.md`](RESEARCH_AND_DESIGN_STRATEGY.md) | Competitor research (sources and dates), answers to the 8 research questions, design direction |
+| [`GENTLE_COMPANY_BRAND_GUIDELINES.md`](GENTLE_COMPANY_BRAND_GUIDELINES.md) | Name, logo system, colour (with contrast ratios), type, voice, packaging, photography |
+| [`IMPLEMENTATION_REPORT.md`](IMPLEMENTATION_REPORT.md) | What changed, how the old brand was removed, interactions, testing, what's still needed |
+| [`PRODUCT_CONFIGURATION.md`](PRODUCT_CONFIGURATION.md) | Every editable field, and how to open the shop |
+| [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md) | The business details and decisions needed to start selling |
+| [`PHOTOGRAPHY_BRIEF.md`](PHOTOGRAPHY_BRIEF.md) | Shot list and specs for photographing manufactured packaging |
+| [`RESEARCH_EVIDENCE.md`](RESEARCH_EVIDENCE.md) | First-phase research log (market, pricing, legal sources) |
 
-## Run it locally
+## Run locally
 
-The site is static HTML, CSS and vanilla JavaScript (ES modules), with no runtime dependencies. Serve it over HTTP (ES modules don't work from `file://`):
+The site is static HTML, CSS and vanilla JavaScript (ES modules), with no runtime dependencies.
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Then open <http://localhost:8080>. On a local server:
-- Checkout and forms run in a clearly labelled preview mode.
-- **Nothing is charged or sent.**
-- The payment and form back ends only exist once the site is deployed on Netlify.
+Then open <http://localhost:8080>.
 
-To try the real payment functions locally with Razorpay **test** keys, use the Netlify CLI:
+The `/api` functions only run on Vercel. To exercise them locally, use `vercel dev`. On a plain static server, forms answer honestly that nothing was sent.
 
-```bash
-npx netlify-cli dev
-```
+## Deploy (Vercel)
 
-## Deploy (Netlify)
+The project deploys from GitHub to Vercel. `vercel.json` sets everything up:
+- **Build:** `node tools/build_public.mjs` copies only the public site into `public/` (strategy docs, tools and QA are never published) and writes `robots.txt` (plus `sitemap.xml` once `company.website` is set).
+- **Functions:** `api/subscribe.js`, `api/contact.js`, `api/create-order.js` and `api/verify-payment.js`. Their logic lives in `server/`.
+- **Headers:** security headers and caching.
 
-`netlify.toml` configures everything:
-- **Build:** `node tools/build_public.mjs` copies only the public website into `public/`, and writes `robots.txt` and `sitemap.xml`. Strategy docs, render tools and QA are never published.
-- **Functions:** `netlify/functions/` provides `/api/create-order` and `/api/verify-payment`.
-- **Headers:** security headers, plus long-cache headers for images and fonts.
-- **Launch guard:** with `previewMode: false`, the build **fails** while `tools/launch_check.mjs` reports blockers.
+**Environment variables** (Vercel → Project → Settings → Environment Variables):
 
-Steps:
-1. In Netlify, choose **Add new site → Import from Git** and pick this repo. The settings are read from `netlify.toml`.
-2. Under **Site configuration → Environment variables**, add `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Start with test keys.
-3. Deploy. Then, in **Forms**, set email notifications to the business inbox.
-4. Connect the domain and set `company.website`.
+| Variable | Needed for |
+|---|---|
+| `BREVO_API_KEY`, `BREVO_LIST_ID` | Early-access and notify-me sign-ups (stored in a Brevo list) |
+| `CONTACT_TO_EMAIL`, `MAIL_FROM_EMAIL` (`MAIL_FROM_NAME` optional) | Contact form → email to the business inbox (sender verified in Brevo) |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Payments, once `site.commerce.enabled` is true |
 
-Useful scripts (Node 18 or later):
+Without these variables the forms tell the visitor plainly that nothing was sent. They never show a fake success.
 
-```bash
-npm run check
-```
+### Renaming the Vercel project
 
-```bash
-npm run build
-```
+The Vercel project and its URL (`ruh-website-virid.vercel.app`) still carry the old working name, and so does the GitHub repository (`sumit-810/ruh-website`). None of this is customer-facing once a custom domain is connected, but to rename them without breaking deployment:
 
-```bash
-npm test
-```
+1. **Vercel:** go to Project → Settings → General → Project Name and change it, for example to `gentle-company`. The `*.vercel.app` URL changes with it. Git integration, environment variables and domains are kept.
+2. **Domain (recommended):** go to Settings → Domains, add your own domain (e.g. `gentlecompany.in`), and set `site.company.website`.
+3. **GitHub (optional):** go to Settings → General → Repository name, for example `gentle-company-website`. GitHub redirects the old URL. Then, in Vercel → Settings → Git, confirm the connection still points at the renamed repository. Reconnect it if not.
 
-`npm run check` is the launch check, `npm run build` builds `public/`, and `npm test` runs the payment function tests.
+These are account changes, so they have not been made by this work.
 
 ## Project structure
 
 ```
-index.html … 404.html      thin page shells (generated by tools/make_pages.py)
-site.config.js             ← ALL brand, product, navigation and page content
+index.html … 404.html      page shells (generated by tools/make_pages.py)
+site.config.js             ← all brand, product, navigation and page content
 content/journal.js         journal articles
-content/policies.js        Shipping & Returns, Privacy, Terms (India drafts; {{tokens}} filled from config)
-netlify/functions/         create-order.mjs, verify-payment.mjs (Razorpay), _shared.mjs
-netlify-forms.html         hidden form definitions so Netlify detects the JS-rendered forms
-netlify.toml               build, functions, headers
-assets-src/photography/    drop real photos here (see PHOTOGRAPHY_BRIEF.md)
+content/policies.js        privacy (published), shipping & terms (drafts until published)
+api/                       Vercel functions (thin entry points)
+server/                    email.mjs (Brevo), create-order.mjs + verify-payment.mjs (Razorpay), http.mjs
 assets/
-  css/main.css             design tokens + all styles (one file, sectioned)
-  brand/                   logo system: wordmark, star, lockups (SVG), social avatar
-  fonts/                   self-hosted Bodoni Moda + Jost (OFL licences included)
-  img/                     generated AVIF/WebP/JPEG images, favicon, og-image
-  js/
-    app.js                 bootstrap: header, footer, bag, search, then the page module
-    data/images.js         generated image manifest (sizes, dimensions, alt text, photo/render)
-    data/brand.js          generated inline logo SVGs
-    lib/                   util, storage, catalog, cart, pricing (shared with the server), images, forms, fields
-    components/            header, footer, bag drawer, search, cards, product blocks, waitlist, overlay, misc
-    pages/                 one module per page type
+  css/main.css             design tokens + all styles
+  fonts/                   Cormorant Garamond, Instrument Sans (OFL)
+  brand/                   wordmark, stacked lockup, monogram (SVG)
+  img/                     responsive AVIF/WebP/JPEG, favicon, og-image
+  js/app.js                bootstrap: header, footer, bag, search, page module
+  js/components/           header, footer, cards + quick view, product blocks, bag, search, waitlist, misc (gallery, shelf)
+  js/pages/                one module per page type
+  js/data/                 generated: images.js (manifest), brand.js (inline SVG), hotspots.js
 tools/
-  make_pages.py            regenerates the HTML shells (only if the <head> changes)
-  build_images.py          photos (preferred) or renders → responsive images + manifest
-  build_brand.py           outlines the logo system from the brand fonts (fontTools)
-  build_public.mjs         deploy build → public/ (+ launch guard)
-  launch_check.mjs         launch-readiness report
-  build_single_file.mjs    one self-contained HTML file in dist/ (for sharing a preview)
-  render/                  Blender scene scripts + textures for the concept imagery
-qa/
-  smoke.mjs                every page × desktop/tablet/mobile: console errors, 404s, broken images, overflow, screenshots
-  interactions.mjs         bag, quantities, totals, persistence, sticky bar, menus, search, forms, filters, checkout, axe-core a11y
-  checkout.mjs             end-to-end Razorpay flow against the real function code (gateway mocked)
-  functions.test.mjs       node --test: pricing, tampering, signature verification, error paths
+  build_brand.py           outlines the logo system from Marcellus (fontTools)
+  render/make_textures.py  typesets every packaging label with the brand fonts
+  render/scenes.py         Blender scenes: packaging, campaign and range images (+ hotspot positions)
+  build_images.py          renders/photos → responsive images + manifest + og-image
+  build_public.mjs         Vercel build → public/
+  launch_check.mjs         what's still needed before selling
+qa/                        Playwright + node tests
 ```
-
-## Pages
-
-| URL | Page |
-|---|---|
-| `index.html` | Home |
-| `shop.html` | Shop all, with category + availability filters (URL-synced) |
-| `product.html?p=body-mist-no-01` | Product detail page |
-| `collection.html?c=body-care` · `face-care` · `lip-care` | Collection / Coming Soon previews with Notify Me |
-| `story.html` | Our Story |
-| `journal.html`, `article.html?a=<slug>` | Journal |
-| `contact.html`, `faq.html` | Contact, FAQs |
-| `shipping-returns.html`, `privacy.html`, `terms.html` | Policy drafts. Decisions still to make are highlighted |
-| `search.html?q=` | Search results (also available as an overlay from the header, or press `/`) |
-| `checkout.html` | Checkout: Razorpay (UPI, cards, net banking, wallets), with optional COD |
-| `order.html?ref=` | Order confirmation |
-| `account.html` | Account placeholder |
-
-## Editing content
-
-Open `site.config.js`. Comments explain each field. Common tasks:
-
-- **Change the price:** `products[0].variants[0].price` (₹, MRP inclusive of taxes). Bags already in visitors' browsers pick up the new price automatically.
-- **Add a size:** add a second entry to `variants`. A size selector appears automatically.
-- **Add a product / move an item from Coming Soon to available:** see `PRODUCT_CONFIGURATION.md` §2.
-- **Company details:** `site.company` (legal name, address, GSTIN) and `site.contact` (email, phone, WhatsApp, grievance officer). They flow into the footer, contact page, policies, product information and structured data.
-- **Delivery charges:** `site.shipping.flatRate` and `freeAbove`. The bag, checkout and server all use the same rules (`assets/js/lib/pricing.js`).
-- **Policies:** edit `content/policies.js`.
-- **Rename the brand:**
-  1. Change `site.brand.name` and `wordmark`.
-  2. Edit `BRAND` in `tools/build_brand.py` and re-run it to redraw the logo.
-  3. Run `python3 tools/make_pages.py` to update the fallback `<title>` text.
-- **Launch:** follow `LAUNCH_CHECKLIST.md` until `node tools/launch_check.mjs` passes, then set `previewMode: false`.
-
-## Payments (Razorpay)
-
-`site.commerce.checkout.provider: 'razorpay'`. This is Razorpay Standard Checkout, which covers UPI, cards, net banking and wallets.
-
-1. The browser sends the bag (product handles, variant ids and quantities) and the customer details to `/api/create-order`.
-2. The function **re-prices the bag from `site.config.js`**, then creates the Razorpay order for that amount in paise. Prices or totals sent by the browser are ignored.
-3. Razorpay Checkout opens with that `order_id`. When it succeeds, `/api/verify-payment` checks `HMAC-SHA256(order_id|payment_id, key_secret)`.
-4. Only after that check does the customer see the confirmation (`order.html`).
-5. The order, the customer's details and the delivery address are kept in the Razorpay order notes, and visible in the Razorpay dashboard.
-
-If the keys are missing, the function answers 503. On a preview build, the checkout then says plainly that it's a preview, and that nothing was charged.
-
-Other providers:
-- `'demo'` is a labelled walk-through that never takes money.
-- `'shopify'` uses Shopify cart permalinks.
-
-**Cash on delivery** is off by default. Turning it on (`shipping.cod`) records COD orders as Netlify form submissions, which you confirm by hand.
-
-**Recommended next step:** order emails and fulfilment. Either use Razorpay's payment emails and webhooks, or move to Shopify or another OMS once volumes justify it.
-
-## Forms (Netlify Forms)
-
-`site.forms.provider: 'netlify'` covers the newsletter, early-access waitlist, notify-me, contact and COD orders.
-- The forms are rendered by JavaScript, so `netlify-forms.html` holds hidden copies that Netlify detects when it builds.
-- Submissions appear in Netlify → Forms, and can be emailed to you or exported.
-- Every form has a honeypot to stop spam bots.
-- The site shows success **only** when the endpoint returns 2xx. On a local preview it says nothing was sent.
-
-Other providers:
-- `'formspree'`, or `'custom'` (posts JSON to `endpoint`, for example a Brevo, Mailchimp or Klaviyo proxy).
-- `'none'`.
-
-### Reviews
-`products[].reviews` is empty, so the PDP shows an honest "No reviews yet" state. Connect a reviews platform (e.g. Judge.me, Yotpo, Okendo) or add verified reviews. Never add invented reviews.
-
-### Analytics
-Not included. Add your tag in `assets/js/app.js`, and name the tool in the privacy policy (`content/policies.js`).
-
-### Support
-When `contact.whatsapp` is set, a WhatsApp chat button appears on every page. The contact page shows customer care, the seller's details and the grievance officer.
-
-## Brand assets
-
-`assets/brand/` holds the logo system:
-- the **RŪH** wordmark, outlined from Bodoni Moda with a custom macron;
-- the eight-point jaali **star**;
-- the **Rūh by GentleCare** lockups, light and dark;
-- a 1080 px social avatar.
-
-They are pure vector, with no fonts needed. Regenerate them with `python tools/build_brand.py` (needs `pip install fonttools`). Usage rules are in `BRAND_DESIGN_SYSTEM.md` §11.
 
 ## Images
 
-All imagery is original: photoreal 3D renders made with Blender/Cycles from code (`tools/render/scenes.py`). The concept bottle (frosted glass, terracotta cap, champagne collar), the jaali-light still-lifes and the plaster maquettes for upcoming products are all procedural. No stock, competitor or AI-image-service assets are used.
+All product imagery is original and generated from code: Gentle Company's packaging design, rendered with Blender Cycles.
 
-```bash
-pip install bpy==5.2.3                      # Blender as a Python module (CPU rendering)
-python3 tools/render/make_textures.py       # label artwork + jaali masks
-python tools/render/scenes.py --list
-python tools/render/scenes.py all --samples 64
-python3 tools/build_images.py               # AVIF/WebP/JPEG at 480–2400 px + manifest
-```
+Every label is typeset with the real brand fonts and applied as a texture, so **GENTLE COMPANY is accurate type** on every bottle, tube and jar.
 
-**Real photography replaces renders one key at a time:**
-1. Save each photo as `assets-src/photography/<key>.jpg`.
-2. Run `python3 tools/build_images.py`.
+To regenerate the images (needs `pip install bpy==5.2.3 pillow fonttools`), run these in order:
 
-The "concept render" captions then disappear for those images. See `PHOTOGRAPHY_BRIEF.md`.
+1. Typeset every packaging label with the brand fonts:
+   ```bash
+   python tools/render/make_textures.py
+   ```
+2. Render all the scenes:
+   ```bash
+   python tools/render/scenes.py all --samples 64
+   ```
+3. Write the product hotspot positions for the "What comes next" image:
+   ```bash
+   python tools/render/scenes.py --hotspots assets/js/data/hotspots.js
+   ```
+4. Build the AVIF, WebP and JPEG images, the manifest and the og-image:
+   ```bash
+   python3 tools/build_images.py
+   ```
+
+When manufactured packaging exists, photograph it (`PHOTOGRAPHY_BRIEF.md`), drop the files into `assets-src/photography/<key>.jpg` and run `build_images.py`. Photos replace renders one by one.
 
 ## Quality assurance
 
+Start a local server from the project root first. The `npm install` step adds axe-core, for development only.
+
 ```bash
-python3 -m http.server 8080 &              # from the project root
-cd qa && npm install                       # installs axe-core (dev only)
-node smoke.mjs                             # all pages × 1440/820/390 px; screenshots in qa/screens/
-node interactions.mjs                      # functional + accessibility checks (49 checks)
-node checkout.mjs                          # Razorpay checkout end to end (mocked gateway, real function code)
-node --test functions.test.mjs             # payment function unit tests
-node single-file.mjs                       # the dist/ single-file build
-node states.mjs                            # screenshots of menus, drawers, search, sticky bar
-node perf.mjs                              # page weight, LCP, CLS
+python3 -m http.server 8080 &
 ```
 
-Playwright is expected to be available (`npm i -D playwright` and `npx playwright install chromium` if not).
+```bash
+cd qa && npm install
+```
 
-## Accessibility & performance notes
+From inside `qa/`, run whichever suites you need:
 
-- Semantic landmarks, skip link, visible focus, 44 px targets, labelled controls, `aria-live` announcements for bag updates and form status.
-- Drawers and search are modal dialogs with focus trap, Escape to close and focus restoration. Mega menus are keyboard operable.
-- The announcement rotator has a pause button; all motion respects `prefers-reduced-motion`.
-- The colour palette is checked against WCAG AA (ratios in the design system). axe-core WCAG A/AA scans pass on the key templates.
-- Self-hosted fonts (2 preloaded files); AVIF/WebP images with explicit dimensions; lazy loading below the fold; no third-party scripts.
-- Measured locally (`node qa/perf.mjs`, no throttling): first-load weight 45–155 KB per page, LCP about 0.2–0.3 s, CLS 0.000–0.008.
-- Bag and recently viewed items are stored in `localStorage` (with an in-memory fallback if storage is blocked).
+| Command | What it checks |
+|---|---|
+| `node smoke.mjs` | Every page at 1440, 820 and 390 px: console errors, 404s, broken images, overflow |
+| `node interactions.mjs` | Navigation, shelf, quick view, gallery, forms, accessibility (axe) |
+| `node --test functions.test.mjs` | Payment and email server functions |
+| `node checkout.mjs` | Razorpay flow end to end, with the gateway mocked |
+| `node brand-audit.mjs` | No old brand name or placeholder text on any rendered page |
 
-## Known limitations
+## Editing
 
-- Content is rendered client-side from `site.config.js`, which keeps editing simple but needs JavaScript. For production SEO, consider pre-rendering (e.g. moving to Shopify, Astro or Next.js using the same config and components) or using a host that pre-renders.
-- Concept renders stay until real photography is supplied (see `PHOTOGRAPHY_BRIEF.md`).
-- Not built yet: customer accounts, order emails from the site, inventory tracking or reviews. Razorpay's dashboard and email receipts cover the first orders.
+Edit `site.config.js`; the comments explain each field. To start selling:
+- fill in the business details;
+- add the product's size and price and set `available: true`;
+- set `commerce.enabled: true`.
+
+`LAUNCH_CHECKLIST.md` walks through it.

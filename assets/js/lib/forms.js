@@ -2,11 +2,11 @@ import { site } from '../../../site.config.js';
 import { $, $$, esc } from './util.js';
 
 /**
- * Form handling for newsletter, waitlist and contact forms.
+ * Form handling for early access, notify-me and contact forms.
  *
- * Honest by design: a success message appears ONLY when a configured
- * endpoint answers with HTTP 2xx. With provider 'none' the visitor is told
- * plainly that nothing was sent.
+ * Honest by design: a success message appears ONLY when the server confirms
+ * the email was stored or sent (HTTP 2xx). Otherwise the visitor is told,
+ * plainly, that it did not go through.
  */
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -65,43 +65,32 @@ const toObject = (form) => {
   return data;
 };
 
-/** True when running somewhere Netlify Forms can't receive posts (local server, file://). */
-const isLocalPreview = () =>
-  location.protocol === 'file:' || ['localhost', '127.0.0.1', '0.0.0.0', '[::1]'].includes(location.hostname);
+const API = { 'early-access': '/api/subscribe', 'notify-me': '/api/subscribe', contact: '/api/contact', 'cod-order': '/api/contact' };
 
 /** Send to the configured provider. Resolves { ok, reason }. */
 export const send = async (formName, data) => {
   const { provider, endpoint } = site.forms;
   const fields = Object.fromEntries(Object.entries(data).filter(([k]) => k !== 'bot-field'));
   try {
-    if (provider === 'formspree' || provider === 'custom') {
-      if (!endpoint) return { ok: false, reason: 'not-configured' };
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ form: formName, ...fields }),
-      });
-      return { ok: res.ok, reason: res.ok ? '' : `http-${res.status}` };
-    }
-    if (provider === 'netlify') {
-      if (isLocalPreview()) return { ok: false, reason: 'local-preview' };
-      // form definitions: netlify-forms.html (Netlify detects forms in static HTML at deploy time)
-      const body = new URLSearchParams({ 'form-name': formName, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, [].concat(v).join(', ')])) });
-      const res = await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-      return { ok: res.ok, reason: res.ok ? '' : `http-${res.status}` };
-    }
-    return { ok: false, reason: 'not-configured' };
+    let url = null;
+    if (provider === 'api') url = API[formName] || '/api/subscribe';
+    else if (provider === 'formspree' || provider === 'custom') url = endpoint;
+    if (!url) return { ok: false, reason: 'unavailable' };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ form: formName, ...fields }),
+    });
+    if (res.ok) return { ok: true, reason: '' };
+    return { ok: false, reason: res.status === 400 || res.status === 422 ? 'invalid' : 'unavailable' };
   } catch {
     return { ok: false, reason: 'network' };
   }
 };
 
 const MESSAGES = {
-  'local-preview': () => 'Preview: forms are delivered through Netlify on the live site, so nothing was sent from this local copy.',
-  'not-configured': () =>
-    site.previewMode
-      ? 'Preview: this form isn’t connected to an email service yet, so nothing was sent or stored. (Configure site.forms in site.config.js.)'
-      : 'Sign-ups open soon — this form isn’t accepting submissions yet. Please check back shortly.',
+  unavailable: () => `We couldn’t save your details just now, so nothing was sent. Please try again a little later${site.contact.email ? ` or write to ${site.contact.email}` : ''}.`,
+  invalid: () => 'Please check your details and try again.',
   network: () => 'We couldn’t reach the server. Please check your connection and try again.',
   default: () => 'Something went wrong and your details were not sent. Please try again.',
 };
@@ -138,7 +127,7 @@ export const wireForm = (form, { name, success = 'Thank you — you’re on the 
         form.reset();
         onSuccess?.();
       } else {
-        status.dataset.tone = result.reason === 'not-configured' || result.reason === 'local-preview' ? 'info' : 'error';
+        status.dataset.tone = 'error';
         status.textContent = (MESSAGES[result.reason] || MESSAGES.default)();
       }
     }

@@ -18,7 +18,7 @@ mkdirSync(OUT, { recursive: true });
 const PAGES = [
   ['home', 'index.html'],
   ['shop', 'shop.html'],
-  ['shop-soon', 'shop.html?avail=soon'],
+  ['shop-face', 'shop.html?cat=face-care'],
   ['product', 'product.html?p=body-mist-no-01'],
   ['body-care', 'collection.html?c=body-care'],
   ['face-care', 'collection.html?c=face-care'],
@@ -33,7 +33,6 @@ const PAGES = [
   ['terms', 'terms.html'],
   ['search', 'search.html?q=mist'],
   ['checkout-empty', 'checkout.html'],
-  ['account', 'account.html'],
   ['404', '404.html'],
   ['bad-product', 'product.html?p=does-not-exist'],
 ];

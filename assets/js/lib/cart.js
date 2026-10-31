@@ -8,7 +8,7 @@ import { getProduct, getVariant } from './catalog.js';
  * site.config.js updates existing bags too. Lines whose product/variant no
  * longer exists, or is no longer available, are dropped.
  */
-const KEY = 'ruh.bag.v1';
+const KEY = 'gc.bag.v1';
 const max = () => site.commerce.maxQuantityPerItem || 10;
 
 const read = () => {
@@ -71,7 +71,7 @@ window.addEventListener('storage', (e) => {
 });
 
 // --- recently viewed ---------------------------------------------------------
-const RV = 'ruh.recent.v1';
+const RV = 'gc.recent.v1';
 export const recent = {
   add(handle) {
     const list = storage.get(RV, []).filter((h) => h !== handle);

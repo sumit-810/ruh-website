@@ -1,56 +1,39 @@
 import { site, navigation } from '../../../site.config.js';
 import { wordmarkSvg } from '../data/brand.js';
-import { esc, icon, prov } from '../lib/util.js';
-import { waitlistForm } from './waitlist.js';
+import { esc, icon } from '../lib/util.js';
 
-const socialLinks = () =>
-  ['instagram', 'pinterest', 'youtube', 'linkedin']
-    .filter((k) => site.social[k])
-    .map((k) => `<a href="${esc(site.social[k])}" rel="noopener" target="_blank" aria-label="${k[0].toUpperCase() + k.slice(1)} (opens in a new tab)">${icon[k]}</a>`)
-    .join('');
-
+/** Compact footer: brand line, link columns, contact (only confirmed details), social. */
 export const renderFooter = () => {
   const mount = document.getElementById('site-footer');
-  if (!mount) return;
-  const year = new Date().getFullYear();
-  // unconfirmed promises are labelled in preview and left out in production
-  const promises = (site.servicePromises || []).filter((s) => site.previewMode || !s.provisional);
+  const c = site.contact;
   const co = site.company;
+  const social = Object.entries(site.social).filter(([, v]) => v);
+  const contactLinks = [
+    { label: 'Contact us', href: 'contact.html' },
+    c.email && { label: c.email, href: `mailto:${c.email}` },
+    c.phone && { label: c.phone, href: `tel:${c.phone.replace(/\s/g, '')}` },
+  ].filter(Boolean);
   mount.innerHTML = `
-${
-  promises.length
-    ? `<section class="service-band" aria-label="Our promises">
+<footer class="site-footer on-dark">
   <div class="container">
-    <div class="service-band__grid">
-      ${promises.map((s) => `<div class="service">${icon[s.icon] || icon.check}<div><h3>${esc(s.title)}${prov(s.provisional, 'To confirm')}</h3><p>${esc(s.text)}</p></div></div>`).join('')}
-    </div>
-  </div>
-</section>`
-    : ''
-}
-<footer class="footer on-dark">
-  <div class="container">
-    <div class="footer__top">
-      <div class="footer__news">
-        <h2>Letters from the studio</h2>
-        <p>Launch news, early access and the occasional note on scent and skin.</p>
-        ${waitlistForm({ dark: true, cta: 'Subscribe', compact: true })}
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="wordmark" href="index.html">${wordmarkSvg}<span class="visually-hidden">${esc(site.brand.name)} — home</span></a>
+        <p>${esc(site.brand.description)}</p>
+        ${social.length ? `<div class="footer-social">${social.map(([k, v]) => `<a class="icon-btn" href="${esc(v)}" target="_blank" rel="noopener" aria-label="${esc(k)}">${icon[k] || ''}</a>`).join('')}</div>` : ''}
       </div>
-      <nav class="footer__cols" aria-label="Footer">
+      <div class="footer-cols">
         ${navigation.footer
-          .map(
-            (g) => `<div><h3>${esc(g.title)}</h3><ul>${g.links.map((l) => `<li><a href="${esc(l.href)}">${esc(l.label)}</a></li>`).join('')}</ul></div>`
-          )
+          .map((col) => `<div><h2>${esc(col.title)}</h2><ul>${col.links.map((l) => `<li><a href="${esc(l.href)}">${esc(l.label)}</a></li>`).join('')}</ul></div>`)
           .join('')}
-      </nav>
+        <div><h2>Help</h2><ul>${contactLinks.map((l) => `<li><a href="${esc(l.href)}">${esc(l.label)}</a></li>`).join('')}</ul></div>
+      </div>
     </div>
-    <div class="footer__bottom">
-      <span>© ${year} ${esc(co.legalName || co.name)}. ${esc(site.brand.name)} is a brand of ${esc(co.name)}.${site.contact.email ? ` · <a href="mailto:${esc(site.contact.email)}">${esc(site.contact.email)}</a>` : ''}</span>
-      ${socialLinks() ? `<div class="footer__social">${socialLinks()}</div>` : ''}
-      <span>Prices in ₹, inclusive of all taxes.${co.gstin ? ` GSTIN ${esc(co.gstin)}` : ''}</span>
+    <div class="footer-mark" aria-hidden="true">${wordmarkSvg}</div>
+    <div class="footer-bottom">
+      <span>© ${new Date().getFullYear()} ${esc(co.legalName || co.name)}.${co.gstin ? ` GSTIN ${esc(co.gstin)}.` : ''}</span>
+      <span>Prices in ₹, inclusive of all taxes.</span>
     </div>
   </div>
-  <div class="footer__mark" aria-hidden="true">${wordmarkSvg}</div>
-  <p class="footer__endorse">${esc(site.brand.name)} — ${esc(site.brand.endorsement)}</p>
 </footer>`;
 };

@@ -1,57 +1,46 @@
 import { site } from '../../../site.config.js';
-import { esc, icon, money, prov, $, $$, uid, navigate } from '../lib/util.js';
-import { defaultVariant, getVariant } from '../lib/catalog.js';
+import { esc, money, icon, $, $$, navigate } from '../lib/util.js';
+import { defaultVariant, getVariant, isPurchasable } from '../lib/catalog.js';
 import { bag } from '../lib/cart.js';
 import { qtyControl, addToBag } from './bag-drawer.js';
+import { waitlistForm } from './waitlist.js';
 
-/** Service notes; unconfirmed (provisional) ones only appear in preview mode. */
-const visibleNotes = () => (site.commerce.serviceNotes || []).filter((n) => site.previewMode || !n.provisional);
-
-/** Price row with Indian MRP note and net quantity. */
-export const priceRow = (p, v) => `
-<div class="price-row" data-price-row>
-  <span class="price">${money(v.price)}${v.compareAtPrice ? `<s>${money(v.compareAtPrice)}</s>` : ''}</span>
-  <span class="price-note">MRP inclusive of all taxes · ${esc(v.netQuantity || v.size)}</span>
-  ${prov(p.provisional?.price, 'Placeholder price')}
-</div>`;
+/** Price + size, only for products that are on sale with a confirmed price. */
+export const priceRow = (p, v = defaultVariant(p)) =>
+  `<div class="price-row" data-price-row><span class="price">${money(v.price)}</span>${v.size ? `<span class="muted">${esc(v.size)}</span>` : ''}<span class="price-note">MRP inclusive of all taxes</span></div>`;
 
 /**
- * Buy box: variant selector (only when >1 size), quantity, add to bag (price
- * in button), optional Buy now (only when a real checkout is configured).
+ * The purchase panel. When the product can be bought: sizes, quantity, Add to
+ * bag and Buy now. Otherwise: its status and a notify-me form — never a
+ * price or a button that can't complete.
  */
-export const buyBox = (p, { idPrefix = uid('buy'), showServiceNotes = true } = {}) => {
+export const buyBox = (p, { id = 'main-buy' } = {}) => {
+  if (!isPurchasable(p)) {
+    return `<div class="buy__panel" id="notify">
+      <h2>${esc(p.statusLabel || 'Coming soon')}</h2>
+      <p>Be the first to know when ${esc(p.name)} is available.</p>
+      ${waitlistForm({ item: p.name, cta: 'Notify me', id: `${id}-wl` })}
+    </div>`;
+  }
+  const variants = p.variants.filter((v) => v.price > 0);
   const v = defaultVariant(p);
-  const multi = p.variants.length > 1;
-  return `
-<form class="buybox__form" data-buy="${esc(p.handle)}" novalidate>
-  ${
-    multi
-      ? `<fieldset class="variant-group"><legend>Size</legend><div class="chips">${p.variants
-          .map(
-            (x) => `<label class="chip"><input type="radio" name="variant" value="${esc(x.id)}" ${x.id === v.id ? 'checked' : ''} ${x.available ? '' : 'disabled'}><span>${esc(x.size)}${x.available ? '' : ' — sold out'}</span></label>`
-          )
-          .join('')}</div></fieldset>`
-      : `<input type="hidden" name="variant" value="${esc(v.id)}"><p class="size-static">Size: ${esc(v.size)}</p>`
-  }
-  <div class="buy-row" style="margin-top:16px">
-    ${qtyControl({ value: 1, max: bag.max(), label: p.name, attrs: 'data-qty', className: 'qty qty--lg' })}
-    <button class="btn" type="submit" data-add id="${idPrefix}-add" ${p.available && v.available ? '' : 'disabled'}>
-      <span>${p.available && v.available ? 'Add to bag' : 'Unavailable'}</span><span class="price-sep">—</span><span data-btn-price>${money(v.price)}</span>
-    </button>
-  </div>
-  ${
-    site.commerce.buyNowEnabled && site.commerce.checkout.provider !== 'demo'
-      ? `<button class="btn btn--ghost btn--block" type="button" data-buy-now style="margin-top:12px">Buy now</button>`
-      : ''
-  }
-  ${
-    showServiceNotes && visibleNotes().length
-      ? `<ul class="service-notes" style="margin-top:20px">${visibleNotes()
-          .map((n) => `<li>${icon.check}<span>${esc(n.text)}${prov(n.provisional)}</span></li>`)
-          .join('')}</ul>`
-      : ''
-  }
-</form>`;
+  const notes = site.commerce.serviceNotes || [];
+  return `<form class="buy__actions" id="${id}" data-buy>
+    ${priceRow(p, v)}
+    ${
+      variants.length > 1
+        ? `<fieldset class="chips size-chips"><legend class="visually-hidden">Size</legend>${variants
+            .map((x) => `<label class="chip"><input type="radio" name="variant" value="${esc(x.id)}" ${x.id === v.id ? 'checked' : ''} ${x.available ? '' : 'disabled'}><span>${esc(x.size)}</span></label>`)
+            .join('')}</fieldset>`
+        : `<input type="hidden" name="variant" value="${esc(v.id)}">`
+    }
+    <div class="buy__row">
+      ${qtyControl({ value: 1, max: bag.max(), label: p.name, attrs: 'data-qty', className: 'qty qty--lg' })}
+      <button class="btn" type="submit" data-add><span>Add to bag</span><span class="price-sep">—</span><span data-btn-price>${money(v.price)}</span></button>
+    </div>
+    ${site.commerce.buyNowEnabled ? `<button class="btn btn--ghost btn--block" type="button" data-buy-now>Buy now</button>` : ''}
+    ${notes.length ? `<ul class="service-notes">${notes.map((n) => `<li>${icon.check}<span>${esc(n.text)}</span></li>`).join('')}</ul>` : ''}
+  </form>`;
 };
 
 /** Wire every buy form inside root. */
@@ -78,9 +67,8 @@ export const wireBuy = (root, p) => {
       if (e.target.name !== 'variant') return;
       const v = currentVariant();
       $('[data-btn-price]', form).textContent = money(v.price);
-      const row = root.querySelector('[data-price-row]');
+      const row = form.querySelector('[data-price-row]');
       if (row) row.outerHTML = priceRow(p, v);
-      window.dispatchEvent(new CustomEvent('variant:change', { detail: { handle: p.handle, variant: v } }));
     });
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -88,47 +76,9 @@ export const wireBuy = (root, p) => {
       input.value = 1;
       syncQty();
     });
-    // Buy now: put the item in the bag and go straight to checkout
     $('[data-buy-now]', form)?.addEventListener('click', () => {
       bag.add(p.handle, currentVariant().id, getQty());
       navigate('checkout.html');
     });
   });
 };
-
-/** Scent pyramid (top / heart / base). */
-export const pyramid = (p) => {
-  const tiers = [
-    { key: 'top', n: 'I', label: 'Top', name: 'The first impression', desc: 'Bright and brief — what you notice first.' },
-    { key: 'heart', n: 'II', label: 'Heart', name: 'The character', desc: 'Emerges as the top notes lift.' },
-    { key: 'base', n: 'III', label: 'Base', name: 'The trail', desc: 'Stays closest to skin, the longest.' },
-  ];
-  // triangle split into three bands: top band smallest
-  const bands = ['M32 2 L42 16 L22 16 Z', 'M22 16 L42 16 L52 31 L12 31 Z', 'M12 31 L52 31 L62 46 L2 46 Z'];
-  return `<div class="pyramid" role="list">
-    ${tiers
-      .map(
-        (t, i) => `<div class="tier" role="listitem">
-        <svg class="tier__glyph" viewBox="0 0 64 48" aria-hidden="true">${bands.map((d, k) => `<path d="${d}" class="${k === i ? 'on' : ''}"/>`).join('')}</svg>
-        <div>
-          <p class="tier__label"><b>${t.n}</b> ${t.label} notes · ${t.name}</p>
-          <p class="tier__notes">${esc((p.notes?.[t.key] || []).join(', ') || 'To be revealed')}</p>
-          <p class="tier__desc">${t.desc}</p>
-        </div>
-      </div>`
-      )
-      .join('')}
-  </div>`;
-};
-
-export const factRows = (p) => `
-<dl class="facts">
-  ${p.family ? `<div><dt>Fragrance family</dt><dd>${esc(p.family)}</dd></div>` : ''}
-  ${p.mood ? `<div><dt>Mood</dt><dd>${esc(p.mood)}</dd></div>` : ''}
-  ${p.wearIt?.length ? `<div><dt>Wear it</dt><dd>${esc(p.wearIt.join(' · '))}</dd></div>` : ''}
-</dl>`;
-
-export const benefitsList = (p) => `
-<ul class="benefits">
-  ${(p.benefits || []).map((b) => `<li>${'<svg class="star" viewBox="0 0 10 10" aria-hidden="true"><path fill="currentColor" d="M5 0l1.2 2.1L8.5 1.5 7.9 3.8 10 5 7.9 6.2l.6 2.3-2.3-.6L5 10 3.8 7.9l-2.3.6.6-2.3L0 5l2.1-1.2-.6-2.3 2.3.6z"/></svg>'}<span><strong>${esc(b.title)}</strong>${esc(b.text)}</span></li>`).join('')}
-</ul>`;

@@ -47,7 +47,7 @@ const body = () => {
             <a class="line__name" href="${productUrl(l.product)}">${esc(l.product.name)}</a>
             <span>${money(l.lineTotal)}</span>
           </div>
-          <p class="line__meta">${esc([l.product.scentName, l.variant.size].filter(Boolean).join(' · '))}</p>
+          <p class="line__meta">${esc([l.product.category, l.variant.size].filter(Boolean).join(' · '))}</p>
           <div class="line__bottom">
             ${qtyControl({ value: l.qty, max: bag.max(), label: l.product.name, focusKey: esc(`${l.handle}|${l.variantId}`) })}
             <button class="line__remove" type="button" data-remove>Remove<span class="visually-hidden"> ${esc(l.product.name)}</span></button>

@@ -1,10 +1,12 @@
 import { site } from '../../../site.config.js';
 import { $, $$ } from '../lib/util.js';
 
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /** Fade-and-rise on scroll. Elements are visible immediately if IO is missing. */
 export const reveal = (root = document) => {
   const els = $$('.reveal:not(.is-in)', root);
-  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (!('IntersectionObserver' in window) || reduced()) {
     els.forEach((el) => el.classList.add('is-in'));
     return;
   }
@@ -16,95 +18,103 @@ export const reveal = (root = document) => {
           io.unobserve(e.target);
         }
       }),
-    { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }
+    { rootMargin: '0px 0px -6% 0px', threshold: 0.06 },
   );
   els.forEach((el) => io.observe(el));
 };
 
-/** Small floating "Preview" badge explaining provisional content. */
-export const previewBadge = () => {
-  if (!site.previewMode) return;
-  const btn = document.createElement('button');
-  btn.className = 'preview-badge';
-  btn.type = 'button';
-  btn.setAttribute('aria-expanded', 'false');
-  btn.setAttribute('aria-controls', 'preview-panel');
-  btn.textContent = 'Preview build';
-  const panel = document.createElement('div');
-  panel.className = 'preview-panel';
-  panel.id = 'preview-panel';
-  panel.hidden = true;
-  panel.innerHTML = `<h2>Preview build</h2>
-    <p>This site is a pre-launch build. The brand name, prices, scent notes, product claims, policies and promises marked <span class="prov" style="margin:0">Placeholder</span> are provisional and must be confirmed before launch.</p>
-    <p>Images marked “concept render” are not final packaging. Payments (Razorpay) and forms (Netlify) work once the site is deployed with its keys; on a local copy nothing is charged or sent.</p>
-    <p class="small">Edit everything in <code>site.config.js</code>; set <code>previewMode: false</code> at launch.</p>`;
-  document.body.append(btn, panel);
-  btn.addEventListener('click', () => {
-    const open = panel.hidden;
-    panel.hidden = !open;
-    btn.setAttribute('aria-expanded', String(open));
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !panel.hidden) {
-      panel.hidden = true;
-      btn.setAttribute('aria-expanded', 'false');
-      btn.focus();
-    }
-  });
-};
-
-/** Swipe/scroll gallery with thumbnails, dots and prev/next. */
+/**
+ * Product gallery: cross-fading slides, thumbnails, arrows, swipe, keyboard,
+ * and hover/click zoom (desktop) that follows the pointer.
+ */
 export const wireGallery = (root) => {
-  const track = $('.gallery__track', root);
-  if (!track) return;
-  const slides = $$('.gallery__slide', track);
+  const main = $('.gallery__main', root);
+  if (!main) return;
+  const slides = $$('.gallery__slide', main);
   const thumbs = $$('.gallery__thumbs button', root);
-  const dots = $$('.gallery__dots button', root);
+  const count = $('.gallery__count', root);
   let index = 0;
-  const go = (i, smooth = true) => {
+  const go = (i) => {
     index = (i + slides.length) % slides.length;
-    track.scrollTo({ left: slides[index].offsetLeft - track.offsetLeft, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
-    mark();
-  };
-  const mark = () => {
+    slides.forEach((s, k) => {
+      s.classList.toggle('is-on', k === index);
+      s.setAttribute('aria-hidden', String(k !== index));
+    });
     thumbs.forEach((t, k) => t.setAttribute('aria-current', String(k === index)));
-    dots.forEach((t, k) => t.setAttribute('aria-current', String(k === index)));
-    slides.forEach((s, k) => s.setAttribute('aria-hidden', String(k !== index)));
+    if (count) count.textContent = `${index + 1} / ${slides.length}`;
+    main.classList.remove('is-zoom');
   };
   thumbs.forEach((t, k) => t.addEventListener('click', () => go(k)));
-  dots.forEach((t, k) => t.addEventListener('click', () => go(k)));
   $('.gallery__nav--prev', root)?.addEventListener('click', () => go(index - 1));
   $('.gallery__nav--next', root)?.addEventListener('click', () => go(index + 1));
-  let raf;
-  track.addEventListener('scroll', () => {
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => {
-      const i = Math.round(track.scrollLeft / track.clientWidth);
-      if (i !== index) {
-        index = i;
-        mark();
-      }
-    });
-  });
-  track.addEventListener('keydown', (e) => {
+  main.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') go(index + 1);
     if (e.key === 'ArrowLeft') go(index - 1);
   });
-  mark();
+  // swipe
+  let x0 = null;
+  main.addEventListener('touchstart', (e) => (x0 = e.touches[0].clientX), { passive: true });
+  main.addEventListener('touchend', (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
+    x0 = null;
+  });
+  // zoom (pointer devices)
+  if (matchMedia('(hover: hover)').matches) {
+    main.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      main.classList.toggle('is-zoom');
+      move(e);
+    });
+    const move = (e) => {
+      if (!main.classList.contains('is-zoom')) return;
+      const r = main.getBoundingClientRect();
+      const img = $('.gallery__slide.is-on img', main);
+      if (img) img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+    };
+    main.addEventListener('mousemove', move);
+    main.addEventListener('mouseleave', () => main.classList.remove('is-zoom'));
+  }
+  go(0);
 };
 
-/** WhatsApp click-to-chat button — only rendered when site.contact.whatsapp is set. */
+/** Horizontal shelf: arrows + progress bar for a scroll-snap track. */
+export const wireShelf = (root) => {
+  const track = $('.shelf__track', root);
+  if (!track) return;
+  const prev = $('[data-shelf-prev]', root);
+  const next = $('[data-shelf-next]', root);
+  const bar = $('.shelf__progress span', root);
+  const step = () => track.clientWidth * 0.9;
+  const sync = () => {
+    const max = track.scrollWidth - track.clientWidth;
+    if (prev) prev.disabled = track.scrollLeft <= 4;
+    if (next) next.disabled = track.scrollLeft >= max - 4;
+    if (bar) {
+      const w = max > 0 ? track.clientWidth / track.scrollWidth : 1;
+      bar.style.width = `${w * 100}%`;
+      bar.style.transform = `translateX(${max > 0 ? (track.scrollLeft / max) * ((1 - w) / w) * 100 : 0}%)`;
+    }
+  };
+  prev?.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: reduced() ? 'auto' : 'smooth' }));
+  next?.addEventListener('click', () => track.scrollBy({ left: step(), behavior: reduced() ? 'auto' : 'smooth' }));
+  track.addEventListener('scroll', () => requestAnimationFrame(sync), { passive: true });
+  window.addEventListener('resize', sync);
+  sync();
+  return sync;
+};
+
+/** WhatsApp click-to-chat — only rendered when site.contact.whatsapp is set. */
 export const supportButton = () => {
   const n = String(site.contact.whatsapp || '').replace(/\D/g, '');
   if (!n) return;
-  const text = encodeURIComponent(`Hi ${site.brand.name}, I have a question.`);
   const a = document.createElement('a');
   a.className = 'support-fab';
-  a.href = `https://wa.me/${n}?text=${text}`;
+  a.href = `https://wa.me/${n}?text=${encodeURIComponent(`Hi ${site.brand.name}, I have a question.`)}`;
   a.target = '_blank';
   a.rel = 'noopener';
-  a.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M4 20l1.2-3.6A8 8 0 1 1 8 19z"/><path fill="currentColor" d="M9.2 8.6c.3-.6.6-.6.9-.6h.5c.2 0 .4.1.5.4l.7 1.6c.1.2 0 .5-.1.6l-.5.6c-.1.2-.1.4 0 .5.5.9 1.3 1.7 2.2 2.2.2.1.4.1.5 0l.6-.6c.2-.2.4-.2.6-.1l1.6.8c.2.1.3.3.3.5v.4c0 .4-.2.8-.6 1-.7.4-1.6.5-2.6.1-1.9-.7-3.5-2.3-4.2-4.2-.4-1-.3-1.9 0-2.6z"/></svg><span>Chat with us</span>`;
   a.setAttribute('aria-label', 'Chat with us on WhatsApp (opens in a new tab)');
+  a.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M4 20l1.2-3.6A8 8 0 1 1 8 19z"/></svg>`;
   document.body.append(a);
-  document.body.classList.add('has-support');
 };

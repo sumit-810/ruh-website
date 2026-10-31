@@ -1,16 +1,20 @@
-"""Procedural Blender (Cycles) scenes for the brand's provisional visual assets.
+"""Procedural Blender (Cycles) scenes for Gentle Company's product imagery.
 
-Everything here is original: geometry, materials and lighting are generated in
-code. The bottle is a CONCEPT design only - it is not the final manufactured
-packaging. Change BOTTLE / PALETTE below to restyle every render consistently.
+Everything is generated in code: geometry, materials, light. The packaging is
+Gentle Company's proposed packaging design; final manufactured packaging may
+differ. All lettering on the packaging comes from label artwork typeset with
+the brand fonts in make_textures.py, mapped onto the surfaces as an accurate
+graphic layer, never from AI-generated text.
 
 Usage (with the `bpy` module installed, e.g. `pip install bpy==5.2.3`):
 
-    python scenes.py --list
-    python scenes.py hero_wide --samples 160
-    python scenes.py all --samples 128 --scale 1.0
+    python tools/render/make_textures.py          # label artwork first
+    python tools/render/scenes.py --list
+    python tools/render/scenes.py hero_wide --samples 160
+    python tools/render/scenes.py all --samples 96
 
-Output PNGs are written to ./out/ and post-processed by build_images.py.
+Output PNGs are written to tools/render/out/ and post-processed by
+tools/build_images.py.
 """
 import argparse
 import math
@@ -27,27 +31,35 @@ TEX = HERE / "textures"
 OUT = HERE / "out"
 
 # ---------------------------------------------------------------------------
-# Art direction
+# Art direction: "Daylight vanity". Warm plaster and stone, soft window light
+# with leaf shadows, clear glass and matte packaging, cocoa ink.
 # ---------------------------------------------------------------------------
 PALETTE = {
-    "limewash": (0.91, 0.84, 0.75),
-    "limewash_warm": (0.91, 0.83, 0.75),
+    "plaster": (0.90, 0.83, 0.75),
+    "plaster_apricot": (0.86, 0.66, 0.53),
+    "plaster_clay": (0.40, 0.22, 0.16),
     "sand": (0.86, 0.79, 0.70),
-    "travertine": (0.80, 0.70, 0.58),
-    "clay": (0.36, 0.125, 0.065),      # bottle cap / brand accent
-    "clay_soft": (0.78, 0.60, 0.53),
+    "travertine": (0.82, 0.73, 0.62),
+    "marble": (0.92, 0.90, 0.87),
+    "linen": (0.91, 0.88, 0.83),
+    "cocoa": (0.10, 0.07, 0.06),
+    "ink": (0.035, 0.025, 0.02),
     "champagne": (0.86, 0.74, 0.55),
-    "liquid": (0.97, 0.84, 0.70),
-    "rose_wall": (0.86, 0.74, 0.69),
-    "cocoa": (0.20, 0.14, 0.11),
-    "linen": (0.90, 0.86, 0.80),
+    "liquid": (0.99, 0.74, 0.52),
+    # packaging colours by line
+    "pack_body": (0.76, 0.48, 0.34),   # apricot
+    "pack_face": (0.84, 0.80, 0.74),   # milk
+    "pack_lip": (0.66, 0.36, 0.33),    # rose
+    # backdrops by line
+    "bg_body": (0.80, 0.63, 0.52),
+    "bg_face": (0.76, 0.73, 0.68),
+    "bg_lip": (0.78, 0.59, 0.55),
 }
 
-BOTTLE = {
-    "radius": 0.022,
-    "body_h": 0.096,
-    "cap_h": 0.044,
-    "cap_color": PALETTE["clay"],
+LINES = {
+    "body": {"pack": PALETTE["pack_body"], "bg": PALETTE["bg_body"]},
+    "face": {"pack": PALETTE["pack_face"], "bg": PALETTE["bg_face"]},
+    "lip": {"pack": PALETTE["pack_lip"], "bg": PALETTE["bg_lip"]},
 }
 
 
@@ -72,11 +84,14 @@ def reset():
     s.cycles.use_adaptive_sampling = True
     s.cycles.adaptive_threshold = 0.02
     s.view_settings.view_transform = "AgX"
-    s.view_settings.look = "AgX - Medium High Contrast"
+    s.view_settings.look = "AgX - High Contrast"
+    s.view_settings.exposure = -0.85
     s.render.image_settings.file_format = "PNG"
     s.render.image_settings.color_depth = "16"
     s.render.film_transparent = False
     return s
+
+
 
 
 def node_mat(name):
@@ -233,82 +248,129 @@ def cylinder(name, r, h, location, mat=None, segments=96, bevel=0.0):
 
 
 # ---------------------------------------------------------------------------
-# The concept bottle
+# Packaging
 # ---------------------------------------------------------------------------
 _mats = {}
 
 
-def materials():
-    if _mats:
-        return _mats
-    _mats["glass"] = principled("frosted_glass", (0.97, 0.95, 0.93), rough=0.46, transmission=1.0, ior=1.5)
-    _mats["liquid"] = principled("liquid", PALETTE["liquid"], rough=0.05, transmission=1.0, ior=1.33)
-    cap = textured_surface("cap_ceramic", BOTTLE["cap_color"], var=0.025, bump=0.06, scale=60, rough=0.55)
-    _mats["cap"] = cap
-    _mats["collar"] = principled("champagne_metal", PALETTE["champagne"], rough=0.22, metallic=1.0)
-    # label: transparent sleeve with printed ink
-    m, nt, n, l = node_mat("label_ink")
-    out = n["Material Output"]
+def load_image(name, non_color=False):
+    img = bpy.data.images.load(str(TEX / name), check_existing=True)
+    if non_color:
+        img.colorspace_settings.name = "Non-Color"
+    return img
+
+
+def printed_mat(name, color, label_key, lw, lh, zc, rough=0.55, coat=0.0, ink=PALETTE["ink"]):
+    """Matte packaging with the label artwork printed on its front (-Y) face.
+
+    The artwork is projected front-on in object space: `lw` x `lh` metres,
+    centred at height `zc`. Ink follows the image's alpha exactly.
+    """
+    m, nt, n, l = node_mat(name)
     p = n["Principled BSDF"]
-    p.inputs["Base Color"].default_value = (0.05, 0.035, 0.03, 1)
-    p.inputs["Roughness"].default_value = 0.5
+    p.inputs["Roughness"].default_value = rough
+    p.inputs["Coat Weight"].default_value = coat
+    coord = n.new("ShaderNodeTexCoord")
+    sep = n.new("ShaderNodeSeparateXYZ")
+    l.new(coord.outputs["Object"], sep.inputs[0])
+    mu = n.new("ShaderNodeMath")
+    mu.operation = "MULTIPLY_ADD"
+    mu.inputs[1].default_value = 1.0 / lw
+    mu.inputs[2].default_value = 0.5
+    l.new(sep.outputs["X"], mu.inputs[0])
+    mv = n.new("ShaderNodeMath")
+    mv.operation = "MULTIPLY_ADD"
+    mv.inputs[1].default_value = 1.0 / lh
+    mv.inputs[2].default_value = 0.5 - zc / lh
+    l.new(sep.outputs["Z"], mv.inputs[0])
+    comb = n.new("ShaderNodeCombineXYZ")
+    l.new(mu.outputs[0], comb.inputs["X"])
+    l.new(mv.outputs[0], comb.inputs["Y"])
     img = n.new("ShaderNodeTexImage")
-    img.image = bpy.data.images.load(str(TEX / "label.png"))
+    img.image = load_image(f"label_{label_key}.png")
     img.extension = "CLIP"
-    tr = n.new("ShaderNodeBsdfTransparent")
-    mix = n.new("ShaderNodeMixShader")
-    l.new(img.outputs["Alpha"], mix.inputs["Fac"])
-    l.new(tr.outputs[0], mix.inputs[1])
-    l.new(p.outputs[0], mix.inputs[2])
-    l.new(mix.outputs[0], out.inputs["Surface"])
+    img.interpolation = "Cubic"
+    l.new(comb.outputs[0], img.inputs["Vector"])
+    front = n.new("ShaderNodeMath")
+    front.operation = "LESS_THAN"
+    front.inputs[1].default_value = 0.0
+    l.new(sep.outputs["Y"], front.inputs[0])
+    mask = n.new("ShaderNodeMath")
+    mask.operation = "MULTIPLY"
+    l.new(img.outputs["Alpha"], mask.inputs[0])
+    l.new(front.outputs[0], mask.inputs[1])
+    mix = n.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    mix.inputs["A"].default_value = (*color, 1)
+    mix.inputs["B"].default_value = (*ink, 1)
+    l.new(mask.outputs[0], mix.inputs["Factor"])
+    l.new(mix.outputs["Result"], p.inputs["Base Color"])
+    # ink is slightly glossier than the matte stock
+    rmix = n.new("ShaderNodeMath")
+    rmix.operation = "MULTIPLY_ADD"
+    rmix.inputs[1].default_value = -0.25
+    rmix.inputs[2].default_value = rough
+    l.new(mask.outputs[0], rmix.inputs[0])
+    l.new(rmix.outputs[0], p.inputs["Roughness"])
+    return m
+
+
+def materials():
+    if "glass" in _mats:
+        return _mats
+    _mats["glass"] = principled("glass", (0.99, 0.985, 0.97), rough=0.015, transmission=1.0, ior=1.5)
+    liq = principled("liquid", (0.99, 0.70, 0.46), rough=0.02, transmission=1.0, ior=1.34)
+    _mats["liquid"] = liq
+    _mats["cap"] = textured_surface("cap_cocoa", (0.06, 0.042, 0.035), var=0.008, bump=0.04, scale=80, rough=0.38)
+    _mats["collar"] = principled("champagne_metal", PALETTE["champagne"], rough=0.25, metallic=1.0)
+    _mats["actuator"] = principled("actuator", (0.12, 0.09, 0.075), rough=0.35)
+    # paper label: printed artwork image, uncoated stock
+    m, nt, n, l = node_mat("paper_label")
+    p = n["Principled BSDF"]
+    img = n.new("ShaderNodeTexImage")
+    img.image = load_image("label_body_mist_paper.png")
+    img.interpolation = "Cubic"
+    l.new(img.outputs["Color"], p.inputs["Base Color"])
+    p.inputs["Roughness"].default_value = 0.78
+    p.inputs["Sheen Weight"].default_value = 0.2
     _mats["label"] = m
     return _mats
 
 
-def label_sleeve(r, z0, h, segments=128):
-    bm = bmesh.new()
-    uv = bm.loops.layers.uv.new()
-    ring0, ring1 = [], []
-    for i in range(segments + 1):
-        a = -math.pi / 2 + math.tau * (i / segments - 0.5)
-        x, y = r * math.cos(a), r * math.sin(a)
-        ring0.append(bm.verts.new((x, y, z0)))
-        ring1.append(bm.verts.new((x, y, z0 + h)))
-    for i in range(segments):
-        f = bm.faces.new((ring0[i], ring0[i + 1], ring1[i + 1], ring1[i]))
-        us = (i / segments, (i + 1) / segments)
-        for loop, (u, v) in zip(f.loops, [(us[0], 0), (us[1], 0), (us[1], 1), (us[0], 1)]):
-            loop[uv].uv = (u, v)
-    return obj_from_bmesh("label", bm, materials()["label"], smooth=True)
+BOTTLE = {"w": 0.052, "d": 0.034, "h": 0.104, "base": 0.009, "cap_r": 0.0138, "cap_h": 0.036}
 
 
 def bottle(location=(0, 0, 0), rotation_z=0.0, cap_on=True, scale=1.0):
+    """Body Mist Nº 01: heavy clear-glass block, apricot liquid, cream paper label, cocoa cap."""
     mats = materials()
-    r, bh, ch = BOTTLE["radius"], BOTTLE["body_h"], BOTTLE["cap_h"]
-    parts = []
-    # frosted glass body with softly rounded heel and shoulder
-    prof = [(0, 0), (r - 0.004, 0)]
-    for i in range(1, 6):
-        a = math.pi / 2 * i / 5
-        prof.append((r - 0.004 + 0.004 * math.sin(a), 0.004 - 0.004 * math.cos(a)))
-    prof += [(r, bh - 0.006)]
-    for i in range(1, 6):
-        a = math.pi / 2 * i / 5
-        prof.append((r - 0.006 + 0.006 * math.cos(a), bh - 0.006 + 0.006 * math.sin(a)))
-    prof += [(0.0075, bh), (0.0075, bh + 0.008), (0, bh + 0.008)]
-    parts.append(lathe("glass", prof, 128, mats["glass"], subsurf=0))
-    # liquid (thick glass base, fill line near the shoulder)
-    lr = r - 0.0009
-    parts.append(cylinder("liquid", lr, bh * 0.80, (0, 0, 0.011), mats["liquid"], bevel=0.003))
-    # printed label
-    parts.append(label_sleeve(r + 0.00025, 0.013, 2 * math.pi * r / 2))
-    # champagne collar line
-    parts.append(cylinder("collar", r + 0.0002, 0.0026, (0, 0, bh - 0.0004), mats["collar"], bevel=0.0006))
+    w, d, h = BOTTLE["w"], BOTTLE["d"], BOTTLE["h"]
+    shell = box("glass", (w, d, h), (0, 0, h / 2), mats["glass"], bevel=0.0085)
+    sol = shell.modifiers.new("wall", "SOLIDIFY")
+    sol.thickness = 0.0024
+    sol.offset = -1.0
+    sol.use_even_offset = True
+    parts = [shell]
+    base = BOTTLE["base"]
+    parts.append(box("base", (w - 0.006, d - 0.006, base - 0.0024), (0, 0, 0.0024 + (base - 0.0024) / 2), mats["glass"], bevel=0.004))
+    lh = h * 0.72
+    parts.append(box("liquid", (w - 0.0058, d - 0.0058, lh), (0, 0, base + 0.0004 + lh / 2), mats["liquid"], bevel=0.0058))
+    parts.append(cylinder("neck", 0.0085, 0.008, (0, 0, h - 0.0005), mats["glass"]))
+    parts.append(cylinder("collar", 0.0105, 0.0042, (0, 0, h + 0.004), mats["collar"], bevel=0.0008))
     if cap_on:
-        parts.append(cylinder("cap", r + 0.0002, ch, (0, 0, bh + 0.0022), mats["cap"], bevel=0.004))
+        parts.append(cylinder("cap", BOTTLE["cap_r"], BOTTLE["cap_h"], (0, 0, h + 0.0007), mats["cap"], bevel=0.0032))
     else:
-        # actuator + dip tube neck for the "open" shot
-        parts.append(cylinder("actuator", 0.0085, 0.014, (0, 0, bh + 0.002), mats["collar"], bevel=0.0015))
+        parts.append(cylinder("actuator", 0.0078, 0.013, (0, 0, h + 0.0082), mats["actuator"], bevel=0.0018))
+        nozzle = cylinder("nozzle", 0.0012, 0.004, (0, 0, 0), principled("nozzle", (0.01, 0.01, 0.01), rough=0.6))
+        nozzle.location = (0, -0.0062, h + 0.0165)
+        nozzle.rotation_euler = (math.pi / 2, 0, 0)
+        parts.append(nozzle)
+    lab = plane("label", 0.0345, 0.046, (0, -d / 2 - 0.00035, h * 0.47), rotation=(math.pi / 2, 0, 0), mat=mats["label"])
+    parts.append(lab)
+    # Glass and liquid let light through; without caustics Cycles would treat them as opaque
+    # shadow casters and the base would refract a black patch. Let light pass instead.
+    for p in parts:
+        if p.name.split(".")[0] in ("glass", "base", "neck", "liquid"):
+            p.visible_shadow = False
     root = bpy.data.objects.new("bottle_root", None)
     bpy.context.collection.objects.link(root)
     for p in parts:
@@ -319,82 +381,134 @@ def bottle(location=(0, 0, 0), rotation_z=0.0, cap_on=True, scale=1.0):
     return root
 
 
-# ---------------------------------------------------------------------------
-# Upcoming-product silhouettes (for "coming soon" imagery, seen through glass)
-# ---------------------------------------------------------------------------
-def tube(name, r, h, location, mat, cap_mat, rot=0.0):
-    """Squeeze tube standing on its cap, crimp at the top."""
-    bm = bmesh.new()
-    seg = 48
-    rings = 14
-    rows = []
-    for j in range(rings + 1):
-        t = j / rings
-        z = 0.012 + t * h
-        flat = t ** 2.2  # ellipse flattens toward the crimp
-        rows.append([bm.verts.new((r * math.cos(a) * (1 + 0.25 * flat), r * math.sin(a) * (1 - 0.94 * flat), z))
-                     for a in [math.tau * i / seg for i in range(seg)]])
-    for j in range(rings):
-        for i in range(seg):
-            bm.faces.new((rows[j][i], rows[j][(i + 1) % seg], rows[j + 1][(i + 1) % seg], rows[j + 1][i]))
-    bm.faces.new(rows[-1][::-1])
-    ob = obj_from_bmesh(name, bm, mat, subsurf=1)
-    capo = cylinder(name + "_cap", r * 0.82, 0.014, (0, 0, 0), cap_mat, bevel=0.002)
+def bottle_cap(location, rotation=(0, 0, 0)):
+    """The cap on its own (for the cap-off shots)."""
+    mats = materials()
+    c = cylinder("cap_loose", BOTTLE["cap_r"], BOTTLE["cap_h"], (0, 0, 0), mats["cap"], bevel=0.0032)
+    c.location = location
+    c.rotation_euler = rotation
+    return c
+
+
+def _root(name, parts, location, rot=0.0):
     root = bpy.data.objects.new(name + "_root", None)
     bpy.context.collection.objects.link(root)
-    ob.parent = root
-    capo.parent = root
+    for p in parts:
+        p.parent = root
     root.location = location
     root.rotation_euler = (0, 0, rot)
     return root
 
 
-def jar(name, r, h, location, mat, lid_mat):
-    body = cylinder(name, r, h, (0, 0, 0), mat, bevel=0.004)
-    lid = cylinder(name + "_lid", r * 1.02, h * 0.42, (0, 0, h), lid_mat, bevel=0.004)
-    root = bpy.data.objects.new(name + "_root", None)
-    bpy.context.collection.objects.link(root)
-    body.parent = root
-    lid.parent = root
-    root.location = location
-    return root
+def cap_mat():
+    if "pack_cap" not in _mats:
+        _mats["pack_cap"] = principled("pack_cap", (0.06, 0.042, 0.035), rough=0.36)
+    return _mats["pack_cap"]
 
 
-def pump(name, r, h, location, mat, head_mat):
-    body = cylinder(name, r, h, (0, 0, 0), mat, bevel=0.005)
-    collar = cylinder(name + "_collar", r * 0.42, 0.012, (0, 0, h), head_mat, bevel=0.002)
-    stem = cylinder(name + "_stem", r * 0.14, 0.02, (0, 0, h + 0.012), head_mat)
-    head = box(name + "_head", (r * 0.5, r * 1.3, 0.012), (0, -r * 0.35, h + 0.036), head_mat, bevel=0.003)
-    root = bpy.data.objects.new(name + "_root", None)
-    bpy.context.collection.objects.link(root)
-    for p in (body, collar, stem, head):
-        p.parent = root
-    root.location = location
-    return root
+def fmt_tube(key, line, r, h, location, rot=0.0):
+    """Squeeze tube standing on its cap, crimp at the top."""
+    bm = bmesh.new()
+    seg, rings = 64, 18
+    rows = []
+    for j in range(rings + 1):
+        t = j / rings
+        z = 0.016 + t * h
+        flat = t ** 2.4
+        rows.append([bm.verts.new((r * math.cos(a) * (1 + 0.28 * flat), r * math.sin(a) * (1 - 0.93 * flat), z))
+                     for a in [math.tau * i / seg for i in range(seg)]])
+    for j in range(rings):
+        for i in range(seg):
+            bm.faces.new((rows[j][i], rows[j][(i + 1) % seg], rows[j + 1][(i + 1) % seg], rows[j + 1][i]))
+    bm.faces.new(rows[-1][::-1])
+    lw = 2 * r * 1.25
+    mat = printed_mat(f"{key}_tube", LINES[line]["pack"], key, lw, lw / 0.8, 0.016 + h * 0.36, rough=0.5, coat=0.15)
+    body = obj_from_bmesh(key, bm, mat, subsurf=1)
+    capo = cylinder(key + "_cap", r * 0.86, 0.017, (0, 0, 0), cap_mat(), bevel=0.002)
+    return _root(key, [body, capo], location, rot)
 
 
-def dropper(name, r, h, location, mat, bulb_mat):
-    body = cylinder(name, r, h, (0, 0, 0), mat, bevel=0.003)
-    collar = cylinder(name + "_collar", r * 0.6, 0.014, (0, 0, h), bulb_mat, bevel=0.002)
-    bulb = lathe(name + "_bulb", [(0, 0), (r * 0.5, 0), (r * 0.5, 0.012), (r * 0.42, 0.024), (r * 0.25, 0.03), (0, 0.031)],
-                 48, bulb_mat, subsurf=1, location=(0, 0, h + 0.014))
-    root = bpy.data.objects.new(name + "_root", None)
-    bpy.context.collection.objects.link(root)
-    for p in (body, collar, bulb):
-        p.parent = root
-    root.location = location
-    return root
+JAR_LABEL = {"scale": 1.02}  # label width as a multiple of the jar diameter (smaller for close-ups)
 
 
-def stick(name, r, h, location, mat, cap_mat):
-    body = cylinder(name, r, h * 0.45, (0, 0, 0), mat, bevel=0.002)
-    cap = cylinder(name + "_cap", r * 1.01, h * 0.55, (0, 0, h * 0.45 + 0.001), cap_mat, bevel=0.003)
-    root = bpy.data.objects.new(name + "_root", None)
-    bpy.context.collection.objects.link(root)
-    body.parent = root
-    cap.parent = root
-    root.location = location
-    return root
+def fmt_jar(key, line, r, h, location, rot=0.0):
+    lw = 2 * r * JAR_LABEL["scale"]
+    mat = printed_mat(f"{key}_jar", LINES[line]["pack"], key, lw, lw / 0.8, h * 0.5, rough=0.42, coat=0.2)
+    body = cylinder(key, r, h, (0, 0, 0), mat, bevel=0.004, segments=128)
+    lid = cylinder(key + "_lid", r * 1.015, h * 0.46, (0, 0, h), cap_mat(), bevel=0.0035, segments=128)
+    return _root(key, [body, lid], location, rot)
+
+
+def fmt_pump(key, line, r, h, location, rot=0.0):
+    lw = 2 * r * 1.12
+    mat = printed_mat(f"{key}_pump", LINES[line]["pack"], key, lw, lw / 0.8, h * 0.5, rough=0.45, coat=0.2)
+    body = cylinder(key, r, h, (0, 0, 0), mat, bevel=0.006, segments=128)
+    collar = cylinder(key + "_collar", r * 0.46, 0.014, (0, 0, h - 0.001), cap_mat(), bevel=0.002)
+    stem = cylinder(key + "_stem", r * 0.17, 0.022, (0, 0, h + 0.012), cap_mat())
+    head = box(key + "_head", (r * 0.62, r * 1.5, 0.013), (0, -r * 0.42, h + 0.039), cap_mat(), bevel=0.004)
+    return _root(key, [body, collar, stem, head], location, rot)
+
+
+def fmt_toner(key, line, r, h, location, rot=0.0):
+    lw = 2 * r * 1.12
+    mat = printed_mat(f"{key}_bottle", LINES[line]["pack"], key, lw, lw / 0.8, h * 0.45, rough=0.3, coat=0.4)
+    prof = [(0, 0), (r - 0.004, 0), (r, 0.004), (r, h - 0.012), (r * 0.62, h - 0.002), (r * 0.42, h), (0, h)]
+    body = lathe(key, prof, 128, mat, subsurf=1)
+    cap = cylinder(key + "_cap", r * 0.5, 0.028, (0, 0, h - 0.002), cap_mat(), bevel=0.003)
+    return _root(key, [body, cap], location, rot)
+
+
+def fmt_dropper(key, line, r, h, location, rot=0.0):
+    lw = 2 * r * 1.3
+    mat = printed_mat(f"{key}_dropper", LINES[line]["pack"], key, lw, lw / 0.8, h * 0.46, rough=0.25, coat=0.5)
+    prof = [(0, 0), (r - 0.003, 0), (r, 0.003), (r, h - 0.008), (r * 0.6, h), (0, h)]
+    body = lathe(key, prof, 128, mat, subsurf=1)
+    collar = cylinder(key + "_collar", r * 0.62, 0.016, (0, 0, h - 0.001), cap_mat(), bevel=0.002)
+    bulb = lathe(key + "_bulb", [(0, 0), (r * 0.5, 0), (r * 0.5, 0.012), (r * 0.44, 0.026), (r * 0.28, 0.034), (0, 0.036)],
+                 64, cap_mat(), subsurf=1, location=(0, 0, h + 0.015))
+    return _root(key, [body, collar, bulb], location, rot)
+
+
+def fmt_stick(key, line, r, h, location, rot=0.0):
+    lw = 2 * r * 1.55
+    mat = printed_mat(f"{key}_stick", LINES[line]["pack"], key, lw, lw / 0.8, h * 0.6, rough=0.4, coat=0.2)
+    body = cylinder(key, r, h, (0, 0, 0), mat, bevel=0.002, segments=96)
+    cap = cylinder(key + "_cap", r * 1.01, h * 0.34, (0, 0, h * 0.995), cap_mat(), bevel=0.0025, segments=96)
+    return _root(key, [body, cap], location, rot)
+
+
+FORMATS = {"tube": fmt_tube, "jar": fmt_jar, "pump": fmt_pump, "toner": fmt_toner, "dropper": fmt_dropper, "stick": fmt_stick}
+
+# Proposed packaging for the coming-soon range: (label key, line, format, dimensions)
+RANGE = {
+    "up_body_wash": ("body_wash", "body", "pump", {"r": 0.027, "h": 0.135}),
+    "up_body_lotion": ("body_lotion", "body", "tube", {"r": 0.021, "h": 0.15}),
+    "up_body_scrub": ("body_scrub", "body", "jar", {"r": 0.043, "h": 0.05}),
+    "up_body_butter": ("body_butter", "body", "jar", {"r": 0.037, "h": 0.046}),
+    "up_hand_cream": ("hand_cream", "body", "tube", {"r": 0.0155, "h": 0.105}),
+    "up_cleanser": ("cleanser", "face", "pump", {"r": 0.022, "h": 0.118}),
+    "up_toner": ("toner", "face", "toner", {"r": 0.023, "h": 0.125}),
+    "up_serum": ("serum", "face", "dropper", {"r": 0.017, "h": 0.074}),
+    "up_moisturiser": ("moisturiser", "face", "jar", {"r": 0.032, "h": 0.042}),
+    "up_sunscreen": ("sunscreen", "face", "tube", {"r": 0.018, "h": 0.13}),
+    "up_mask": ("mask", "face", "jar", {"r": 0.036, "h": 0.044}),
+    "up_lip_balm": ("lip_balm", "lip", "stick", {"r": 0.0098, "h": 0.07}),
+    "up_lip_treatment": ("lip_treatment", "lip", "tube", {"r": 0.011, "h": 0.088}),
+}
+
+
+def product(range_key, location, rot=0.0):
+    key, line, fmt, dims = RANGE[range_key]
+    return FORMATS[fmt](key, line, dims["r"], dims["h"], location, rot)
+
+
+def product_height(range_key):
+    key, line, fmt, d = RANGE[range_key]
+    extra = {"tube": 0.016, "jar": d["h"] * 0.46, "pump": 0.046, "toner": 0.026, "dropper": 0.051, "stick": d["h"] * 0.34}[fmt]
+    return d["h"] + extra
+
+
+BOTTLE_TOP = BOTTLE["h"] + BOTTLE["cap_h"]
 
 
 # ---------------------------------------------------------------------------
@@ -456,7 +570,7 @@ def area(loc, target, size=1.0, energy=30, color=(1, 0.97, 0.93)):
     return ob
 
 
-def screen(direction, center, pattern="jaali_star.png", distance=0.7, size=2.4, repeat=4.0, rot=0.0, window=None):
+def screen(direction, center, pattern="leaves.png", distance=0.7, size=2.4, repeat=4.0, rot=0.0, window=None):
     """Invisible-to-camera lattice that throws patterned window light.
 
     window: if set (e.g. 2.5), the clipped arch artwork is scaled down to
@@ -475,7 +589,7 @@ def screen(direction, center, pattern="jaali_star.png", distance=0.7, size=2.4, 
     img = n.new("ShaderNodeTexImage")
     img.image = bpy.data.images.load(str(TEX / pattern))
     img.image.colorspace_settings.name = "Non-Color"
-    img.extension = "REPEAT" if pattern == "jaali_star.png" else "CLIP"
+    img.extension = "REPEAT" if pattern == "leaves.png" else "CLIP"
     l.new(coord.outputs["UV"], mapping.inputs["Vector"])
     l.new(mapping.outputs["Vector"], img.inputs["Vector"])
     tr = n.new("ShaderNodeBsdfTransparent")
@@ -496,7 +610,7 @@ def screen(direction, center, pattern="jaali_star.png", distance=0.7, size=2.4, 
     return ob
 
 
-def room(wall_color=PALETTE["limewash"], floor_color=PALETTE["sand"], wall_y=0.32, floor=True):
+def room(wall_color=PALETTE["plaster"], floor_color=PALETTE["sand"], wall_y=0.32, floor=True):
     wall = textured_surface("limewash", wall_color, var=0.05, bump=0.35, scale=9, rough=0.92)
     plane("wall", 4, 3, (0, wall_y, 1.2), rotation=(math.pi / 2, 0, 0), mat=wall)
     if floor:
@@ -552,7 +666,7 @@ def mist_plume(origin, direction, length=0.28, spread=0.11, count=7000, seed=7):
     l.new(noise.outputs["Fac"], mul.inputs[1])
     dens = n.new("ShaderNodeMath")
     dens.operation = "MULTIPLY"
-    dens.inputs[1].default_value = 60.0
+    dens.inputs[1].default_value = 45.0
     l.new(mul.outputs[0], dens.inputs[0])
     l.new(dens.outputs[0], sc.inputs["Density"])
     l.new(sc.outputs[0], out.inputs["Volume"])
@@ -611,266 +725,346 @@ SUN_LEFT = (0.62, 0.55, -0.42)
 SUN_RIGHT = (-0.6, 0.6, -0.45)
 
 
+
+
+def sweep(color, width=3.0, depth=1.2, height=1.4, radius=0.3, y0=0.55, var=0.02):
+    # floor is flat until y = y0 - radius (0.25 m behind the product), so nothing sinks into the curve
+    """Seamless studio backdrop: floor curving up into a wall at y=y0."""
+    prof = [(-depth, 0.0)]
+    for i in range(0, 17):
+        a = math.pi / 2 * i / 16
+        prof.append((y0 - radius + radius * math.sin(a), radius - radius * math.cos(a)))
+    prof.append((y0, height))
+    bm = bmesh.new()
+    left = [bm.verts.new((-width / 2, y, z)) for y, z in prof]
+    right = [bm.verts.new((width / 2, y, z)) for y, z in prof]
+    for i in range(len(prof) - 1):
+        bm.faces.new((left[i], right[i], right[i + 1], left[i + 1]))
+    m = textured_surface("sweep", color, var=var, bump=0.05, scale=6, rough=0.9)
+    return obj_from_bmesh("sweep", bm, m, smooth=True)
+
+
+def studio(color, key=22.0, leaves=True, sun_dir=(0.55, 0.62, -0.5), sun_energy=4.5):
+    """Soft packshot light: big key from the left, fill, rim, and leaf shadow across the sweep."""
+    world(color=tuple(c * 0.9 for c in color), strength=0.18)
+    sweep(color)
+    area((-0.42, -0.38, 0.42), (0, 0, 0.06), size=0.6, energy=key, color=(1.0, 0.96, 0.9))
+    area((0.5, -0.32, 0.16), (0, 0, 0.06), size=0.9, energy=key * 0.2)
+    area((0.18, 0.4, 0.38), (0, 0, 0.08), size=0.4, energy=key * 0.45, color=(1.0, 0.93, 0.85))
+    if leaves:
+        d = sun(sun_dir, energy=sun_energy, angle_deg=1.6)
+        screen(d, (0, 0.05, 0.08), pattern="leaves.png", distance=0.55, size=1.6, repeat=1.4)
+
+
+def frame(height, fill=0.62, lens=90, elev_deg=7.0, aspect=0.8, x=0.0, look_frac=0.48, yaw_deg=0.0):
+    """Place a camera so an object `height` tall fills `fill` of the frame height."""
+    sensor = 36.0
+    fov_v = 2 * math.atan((sensor / 2) / lens) if aspect <= 1 else 2 * math.atan((sensor / 2 / aspect) / lens)
+    dist = (height / fill) / (2 * math.tan(fov_v / 2))
+    e = math.radians(elev_deg)
+    yw = math.radians(yaw_deg)
+    tz = height * look_frac
+    loc = (x + dist * math.cos(e) * math.sin(yw), -dist * math.cos(e) * math.cos(yw), tz + dist * math.sin(e))
+    return camera(loc, (x, 0, tz), lens=lens, dof=True, fstop=8.0)
+
+
+def stone(location, size, color=PALETTE["travertine"]):
+    return plinth(size, (location[0], location[1], location[2] + size[2] / 2), color=color)
+
+
+def water(z, size=(1.2, 0.6), location=(0, -0.35)):
+    m, nt, n, l = node_mat("water")
+    p = n["Principled BSDF"]
+    p.inputs["Base Color"].default_value = (0.86, 0.9, 0.88, 1)
+    p.inputs["Roughness"].default_value = 0.02
+    p.inputs["Transmission Weight"].default_value = 1.0
+    p.inputs["IOR"].default_value = 1.33
+    coord = n.new("ShaderNodeTexCoord")
+    noise = n.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 28
+    noise.inputs["Detail"].default_value = 3
+    l.new(coord.outputs["Object"], noise.inputs["Vector"])
+    bmp = n.new("ShaderNodeBump")
+    bmp.inputs["Strength"].default_value = 0.25
+    l.new(noise.outputs["Fac"], bmp.inputs["Height"])
+    l.new(bmp.outputs["Normal"], p.inputs["Normal"])
+    return plane("water", size[0], size[1], (location[0], location[1], z), mat=m)
+
+
+def mirror(location, r=0.16):
+    m = principled("mirror", (0.95, 0.93, 0.9), rough=0.02, metallic=1.0)
+    frame_m = principled("mirror_frame", PALETTE["champagne"], rough=0.3, metallic=1.0)
+    disc = cylinder("mirror", r, 0.004, (0, 0, 0), m, segments=128)
+    rim = cylinder("mirror_rim", r + 0.006, 0.003, (0, 0, -0.002), frame_m, segments=128)
+    root = _root("mirror", [disc, rim], location)
+    root.rotation_euler = (math.pi / 2, 0, 0)
+    return root
+
+
+# ---------------------------------------------------------------------------
+# Scenes. Each returns (width, height) in pixels at scale 1.
+# ---------------------------------------------------------------------------
 def hero_wide():
-    world()
-    room(wall_y=0.30)
-    plinth((0.30, 0.22, 0.11), (0.16, 0.06, 0.055))
-    bottle((0.16, 0.04, 0.11), rotation_z=0.0)
-    stone = sphere("pebble", 0.022, (0.25, 0.0, 0.118), textured_surface("pebble", PALETTE["sand"], 0.04, 0.3, 40, 0.7))
-    stone.scale = (1.0, 0.85, 0.42)
-    d = sun(SUN_LEFT, energy=6.0)
-    screen(d, (0.10, 0.14, 0.2), pattern="jaali_arch.png", distance=0.9, size=4.0, window=4.0)
-    area((0.4, -0.9, 0.4), (0.1, 0.1, 0.15), size=1.5, energy=14)
-    camera((0.02, -0.92, 0.25), (0.06, 0.1, 0.17), lens=50, dof=True, fstop=5.6)
+    """Campaign hero: the bottle on travertine against warm apricot plaster, leaf light."""
+    world(color=(0.9, 0.72, 0.6), strength=0.25)
+    room(wall_color=PALETTE["plaster_apricot"], floor_color=PALETTE["travertine"], wall_y=0.2)
+    stone((0.11, 0.0, 0.0), (0.26, 0.17, 0.07))
+    bottle(location=(0.11, -0.005, 0.07), rotation_z=math.radians(-8))
+    stone((-0.06, -0.03, 0.0), (0.09, 0.09, 0.03), color=PALETTE["marble"])
+    linen((0.27, -0.02, 0.0), size=(0.16, 0.12, 0.016))
+    d = sun((0.62, 0.5, -0.42), energy=6.0, angle_deg=1.2, color=(1.0, 0.86, 0.7))
+    screen(d, (0.1, 0.1, 0.12), pattern="leaves.png", distance=0.6, size=2.0, repeat=1.2)
+    area((-0.3, -0.5, 0.3), (0.1, 0, 0.12), size=1.0, energy=9, color=(1, 0.95, 0.9))
+    area((0.4, -0.2, 0.25), (0.11, 0, 0.13), size=0.3, energy=4)
+    camera((0.03, -0.66, 0.2), (0.03, 0.02, 0.125), lens=58, dof=0.66, fstop=5.6)
     return 2400, 1350
 
 
 def hero_portrait():
-    world()
-    room(wall_y=0.30)
-    plinth((0.26, 0.20, 0.11), (0.0, 0.06, 0.055))
-    bottle((0.0, 0.04, 0.11))
-    d = sun(SUN_LEFT, energy=6.0)
-    screen(d, (0.02, 0.12, 0.2), pattern="jaali_arch.png", distance=0.9, size=4.0, window=5.0)
-    area((0.4, -0.9, 0.4), (0, 0.1, 0.15), size=1.5, energy=14)
-    camera((0, -0.70, 0.235), (0, 0.06, 0.17), lens=75, dof=True, fstop=5.6)
-    return 1600, 2000
+    world(color=(0.9, 0.72, 0.6), strength=0.25)
+    room(wall_color=PALETTE["plaster_apricot"], floor_color=PALETTE["travertine"], wall_y=0.16)
+    stone((0.0, 0.0, 0.0), (0.2, 0.15, 0.07))
+    bottle(location=(0.0, -0.005, 0.07), rotation_z=math.radians(-8))
+    linen((0.13, -0.04, 0.0), size=(0.14, 0.12, 0.016))
+    d = sun((0.62, 0.5, -0.42), energy=6.0, angle_deg=1.2, color=(1.0, 0.86, 0.7))
+    screen(d, (0.0, 0.1, 0.12), pattern="leaves.png", distance=0.6, size=2.0, repeat=1.2)
+    area((-0.3, -0.5, 0.3), (0, 0, 0.12), size=1.0, energy=9, color=(1, 0.95, 0.9))
+    camera((0.0, -0.6, 0.18), (0.0, 0.0, 0.135), lens=70, dof=0.6, fstop=5.6)
+    return 1440, 1800
+
+
+def glass_card(y=0.075, z=0.045, w=0.34, h=0.11, strength=2.2):
+    """A white card behind the bottle, seen only through the glass (like a photographer's bounce card)."""
+    m, nt, n, l = node_mat("card")
+    out = n["Material Output"]
+    n.remove(n["Principled BSDF"])
+    em = n.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (1.0, 0.95, 0.9, 1)
+    em.inputs["Strength"].default_value = strength
+    l.new(em.outputs[0], out.inputs["Surface"])
+    ob = plane("card", w, h, (0, y, z), rotation=(math.pi / 2, 0, 0), mat=m)
+    ob.visible_camera = False
+    ob.visible_diffuse = False
+    ob.visible_shadow = False
+    return ob
+
+
+def _stand(x=0.0, r=0.06, h=0.014):
+    """Low travertine disc: the heavy glass base refracts bright stone instead of floor shadow."""
+    st = textured_surface("stand", PALETTE["travertine"], var=0.04, bump=0.4, scale=26, rough=0.7, pits=True)
+    cylinder("stand", r, h, (x, 0, 0), st, bevel=0.002, segments=128)
+    return h
 
 
 def pack_front():
-    """Clean packshot on a warm seamless backdrop for cards and the gallery."""
-    bpy.context.scene.view_settings.exposure = -0.45
-    world((0.93, 0.84, 0.74), 0.22)
-    sweep = textured_surface("sweep", (0.86, 0.78, 0.69), var=0.012, bump=0.03, scale=6, rough=0.95)
-    plane("floor", 3, 3, (0, 0, 0), mat=sweep)
-    plane("wall", 3, 2, (0, 0.6, 1.0), rotation=(math.pi / 2, 0, 0), mat=sweep)
-    bottle((0, 0, 0))
-    area((-0.5, -0.6, 0.6), (0, 0, 0.07), size=1.0, energy=16)
-    area((0.6, -0.3, 0.3), (0, 0, 0.07), size=1.0, energy=4)
-    area((0.0, 0.4, 0.5), (0, 0, 0.1), size=0.8, energy=8)
-    camera((0, -0.44, 0.075), (0, 0, 0.071), lens=85)
+    """Clean packshot: cards, gallery lead image, structured data."""
+    studio(PALETTE["bg_body"], sun_dir=(0.62, 0.5, -0.42), sun_energy=3.6)
+    z = _stand()
+    glass_card()
+    bottle(location=(0, 0, z), rotation_z=0.0)
+    frame(BOTTLE_TOP + z, fill=0.62, elev_deg=7)
     return 1600, 2000
 
 
 def pack_angle():
-    bpy.context.scene.view_settings.exposure = -0.3
-    world((0.93, 0.86, 0.78), 0.3)
-    sweep = textured_surface("sweep", (0.88, 0.81, 0.72), var=0.012, bump=0.03, scale=6, rough=0.95)
-    plane("floor", 3, 3, (0, 0, 0), mat=sweep)
-    plane("wall", 3, 2, (0, 0.6, 1.0), rotation=(math.pi / 2, 0, 0), mat=sweep)
-    bottle((0, 0, 0), rotation_z=math.radians(-28))
-    d = sun((0.55, 0.65, -0.52), energy=4.0, angle_deg=2.5)
-    area((-0.6, -0.5, 0.4), (0, 0, 0.07), size=1.2, energy=12)
-    camera((0.22, -0.40, 0.16), (0, 0, 0.068), lens=90)
+    studio(PALETTE["bg_body"], sun_dir=(0.5, 0.6, -0.45), sun_energy=3.6)
+    z = _stand()
+    glass_card()
+    bottle(location=(0, 0, z), rotation_z=math.radians(-32))
+    frame(BOTTLE_TOP + z, fill=0.62, elev_deg=10)
     return 1600, 2000
 
 
 def pack_open():
-    bpy.context.scene.view_settings.exposure = -0.45
-    world((0.93, 0.84, 0.74), 0.22)
-    sweep = textured_surface("sweep", (0.86, 0.78, 0.69), var=0.012, bump=0.03, scale=6, rough=0.95)
-    plane("floor", 3, 3, (0, 0, 0), mat=sweep)
-    plane("wall", 3, 2, (0, 0.6, 1.0), rotation=(math.pi / 2, 0, 0), mat=sweep)
-    bottle((-0.02, 0, 0), cap_on=False)
-    capm = materials()["cap"]
-    cap = cylinder("cap_loose", BOTTLE["radius"], BOTTLE["cap_h"], (0, 0, 0), capm, bevel=0.004)
-    cap.rotation_euler = (math.pi / 2, 0, math.radians(20))
-    cap.location = (0.045, -0.03, BOTTLE["radius"])
-    area((-0.5, -0.6, 0.6), (0, 0, 0.07), size=1.0, energy=16)
-    area((0.6, -0.3, 0.3), (0, 0, 0.07), size=1.0, energy=4)
-    camera((0.04, -0.46, 0.15), (0.01, 0, 0.06), lens=85)
-    return 1600, 2000
-
-
-def detail_cap():
-    world()
-    room(wall_y=0.20)
-    plinth((0.2, 0.16, 0.11), (0, 0.04, 0.055))
-    bottle((0, 0.03, 0.11), rotation_z=math.radians(8))
-    d = sun(SUN_LEFT, energy=4.8, angle_deg=0.6)
-    screen(d, (0, 0.05, 0.2), distance=0.6, size=2.0, repeat=7.0)
-    area((0.3, -0.6, 0.3), (0, 0, 0.2), size=1.0, energy=8)
-    # focus on the cap's front surface (bottle axis is at y=0.03, radius 0.022)
-    camera((0.03, -0.26, 0.25), (0.004, 0.009, 0.205), lens=100, dof=True, fstop=6.3)
-    return 1600, 2000
-
-
-def mist():
-    world((0.93, 0.88, 0.82), 0.3)
-    room(wall_color=PALETTE["limewash_warm"], wall_y=0.35)
-    plinth((0.22, 0.18, 0.09), (-0.05, 0.05, 0.045))
-    b = bottle((-0.05, 0.04, 0.09), cap_on=False)
-    top = (-0.05 + 0.006, 0.04 - 0.005, 0.09 + BOTTLE["body_h"] + 0.012)
-    mist_plume(top, (0.9, -0.12, 0.22), length=0.30, spread=0.075)
-    d = sun((0.5, 0.62, -0.6), energy=5.0, angle_deg=1.0)
-    screen(d, (0.05, 0.15, 0.25), pattern="jaali_arch.png", distance=0.9, size=4.0, window=3.0)
-    area((0.4, -0.8, 0.3), (0, 0.1, 0.15), size=1.5, energy=10)
-    camera((0.03, -0.62, 0.23), (0.03, 0.06, 0.21), lens=60, dof=True, fstop=5.6)
-    return 1600, 2000
-
-
-def ritual_ledge():
-    world()
-    room(wall_color=PALETTE["limewash"], wall_y=0.16)
-    ledge = textured_surface("ledge", PALETTE["travertine"], 0.05, 0.4, 20, 0.6, pits=True, veins=True)
-    box("ledge", (0.9, 0.3, 0.06), (0, 0.01, 0.03), ledge, bevel=0.003)
-    linen((-0.10, 0.03, 0.069), size=(0.2, 0.15, 0.018))
-    linen((-0.10, 0.03, 0.087), size=(0.19, 0.14, 0.016), color=(0.88, 0.80, 0.74))
-    bottle((0.07, 0.03, 0.06), rotation_z=math.radians(-6))
-    dish = principled("dish", (0.93, 0.9, 0.86), rough=0.25)
-    cylinder("dish", 0.04, 0.008, (0.16, -0.01, 0.06), dish, bevel=0.003)
-    sphere("soapstone", 0.014, (0.16, -0.01, 0.08), textured_surface("pebble2", PALETTE["clay_soft"], 0.03, 0.1, 40, 0.6))
-    d = sun((0.7, 0.45, -0.55), energy=5.5, angle_deg=0.5)
-    screen(d, (0.02, 0.06, 0.16), pattern="jaali_arch.png", distance=0.8, size=4.0, window=3.6, rot=0.0)
-    area((0.3, -0.8, 0.3), (0, 0, 0.1), size=1.6, energy=14)
-    camera((0.0, -0.62, 0.20), (0.02, 0.04, 0.11), lens=55, dof=True, fstop=5.0)
-    return 1600, 2000
-
-
-def niche():
-    """Bottle standing in an arched limewash alcove - a nod to havelis and stepwells."""
-    world((0.93, 0.80, 0.68), 0.32)
-    lime = textured_surface("lime_niche", PALETTE["limewash"], var=0.05, bump=0.35, scale=9, rough=0.92)
-    wall = box("wall_block", (1.6, 0.14, 1.2), (0, 0.07, 0.42), lime, bevel=0.0)
-    # cutter: rectangle + half-cylinder = arch, recessed 9 cm into the wall
-    nw, nh, depth = 0.17, 0.25, 0.09
-    cut_box = box("cut_box", (nw, depth * 2, nh), (0, 0, 0.12 + nh / 2), None, bevel=0.0)
-    bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, segments=96, radius1=nw / 2, radius2=nw / 2, depth=depth * 2)
-    cut_cyl = obj_from_bmesh("cut_cyl", bm, None, smooth=True)
-    cut_cyl.rotation_euler = (math.pi / 2, 0, 0)
-    cut_cyl.location = (0, 0, 0.12 + nh)
-    for c in (cut_box, cut_cyl):
-        mod = wall.modifiers.new("cut", "BOOLEAN")
-        mod.operation = "DIFFERENCE"
-        mod.object = c
-        mod.solver = "EXACT"
-        c.hide_render = True
-        c.hide_viewport = True
-    fl = textured_surface("floor_n", PALETTE["sand"], 0.04, 0.2, 14, 0.8)
-    plane("floor", 4, 4, (0, -0.5, 0), mat=fl)
-    bottle((0.0, 0.045, 0.12), rotation_z=math.radians(-4))
-    d = sun((0.62, 0.62, -0.48), energy=6.0, angle_deg=0.45)
-    screen(d, (0.0, 0.0, 0.3), pattern="jaali_arch.png", distance=0.9, size=4.0, window=3.4)
-    area((0.3, -1.0, 0.4), (0, 0, 0.25), size=1.6, energy=12)
-    camera((0.0, -0.70, 0.235), (0, 0.02, 0.215), lens=75, dof=True, fstop=8)
+    studio(PALETTE["bg_body"], sun_dir=(0.62, 0.5, -0.42), sun_energy=3.6)
+    z = _stand(r=0.075)
+    glass_card()
+    bottle(location=(-0.016, 0, z), cap_on=False, rotation_z=math.radians(-10))
+    bottle_cap((0.036, -0.018, z))
+    frame(BOTTLE["h"] + 0.03 + z, fill=0.6, elev_deg=10, x=0.004)
     return 1600, 2000
 
 
 def detail_label():
-    """Macro of the printed label in patterned light."""
-    world()
-    room(wall_y=0.12)
-    plinth((0.2, 0.16, 0.11), (0, 0.04, 0.055))
-    bottle((0, 0.03, 0.11), rotation_z=math.radians(-3))
-    d = sun(SUN_LEFT, energy=6.0, angle_deg=0.4)
-    screen(d, (0, 0.03, 0.17), pattern="jaali_arch.png", distance=0.6, size=3.0, window=7.0)
-    area((0.3, -0.6, 0.3), (0, 0, 0.2), size=1.0, energy=8)
-    camera((0.0, -0.21, 0.165), (0, 0.009, 0.16), lens=100, dof=True, fstop=6.3)
+    """Macro on the label: the wordmark, legible."""
+    studio(PALETTE["bg_body"], key=12, sun_energy=2.5)
+    bottle(rotation_z=math.radians(-12))
+    camera((0.02, -0.19, 0.055), (0.0, -0.017, 0.05), lens=100, dof=True, fstop=5.6)
     return 1600, 2000
 
 
-def wall_light():
-    """Atmospheric wall study (no product) for story / section breaks."""
-    world((0.93, 0.88, 0.82), 0.3)
-    room(wall_color=PALETTE["limewash"], wall_y=0.05)
-    plinth((0.5, 0.25, 0.04), (0.18, -0.07, 0.02), color=PALETTE["sand"])
-    d = sun((0.55, 0.7, -0.45), energy=5.5, angle_deg=0.45)
-    screen(d, (0.1, 0.05, 0.42), pattern="jaali_arch.png", distance=0.9, size=4.0, window=3.2)
-    camera((0, -1.1, 0.4), (0, 0.05, 0.38), lens=50)
-    return 2400, 1500
+def mist():
+    """The spray, backlit against clay plaster."""
+    world(color=(0.45, 0.3, 0.24), strength=0.12)
+    room(wall_color=PALETTE["plaster_clay"], floor_color=PALETTE["travertine"], wall_y=0.25)
+    stone((-0.05, 0, 0), (0.16, 0.14, 0.05))
+    bottle(location=(-0.06, 0, 0.05), cap_on=False, rotation_z=math.radians(-6))
+    mist_plume((-0.06 + 0.002, -0.012, 0.05 + BOTTLE["h"] + 0.0165), (0.6, -0.12, 0.3), length=0.22, spread=0.085, count=6000)
+    area((0.12, 0.12, 0.3), (0.02, -0.03, 0.19), size=0.1, energy=26, color=(1, 0.88, 0.74))
+    area((-0.35, -0.4, 0.3), (-0.05, 0, 0.12), size=0.9, energy=9)
+    camera((0.0, -0.52, 0.16), (0.005, 0, 0.14), lens=55, dof=0.53, fstop=5.6)
+    return 1600, 2000
 
 
-def upcoming_group(kind):
-    """Silhouettes of future formats behind reeded glass - shapes are generic, not designs."""
-    world((0.94, 0.9, 0.85), 0.4)
-    room(wall_color=PALETTE["limewash"] if kind != "lip" else PALETTE["rose_wall"], wall_y=0.25)
-    plinth((0.6, 0.3, 0.05), (0, 0.08, 0.025), color=PALETTE["travertine"])
+def vanity():
+    """Bathroom vanity: marble counter, round mirror, folded towel, leaf light."""
+    world(color=(0.92, 0.86, 0.8), strength=0.3)
+    room(wall_color=PALETTE["plaster"], floor_color=PALETTE["marble"], wall_y=0.22)
+    counter = textured_surface("marble_top", PALETTE["marble"], var=0.03, bump=0.05, scale=4, rough=0.25, veins=True)
+    box("counter", (1.6, 0.5, 0.04), (0, -0.03, 0.02), counter, bevel=0.003)
+    vase = principled("vase", (0.78, 0.66, 0.56), rough=0.5, coat=0.2)
+    lathe("vase", [(0, 0), (0.03, 0), (0.042, 0.03), (0.04, 0.075), (0.018, 0.11), (0.014, 0.135), (0.017, 0.14), (0, 0.14)], 96, vase, subsurf=1, location=(0.2, 0.08, 0.04))
+    tray = principled("tray", (0.86, 0.8, 0.72), rough=0.35, coat=0.3)
+    cylinder("tray", 0.085, 0.008, (-0.02, -0.02, 0.04), tray, bevel=0.003)
+    bottle(location=(-0.02, -0.02, 0.048), rotation_z=math.radians(-14))
+    linen((0.17, -0.04, 0.04), size=(0.16, 0.12, 0.03))
+    stone((-0.17, -0.01, 0.04), (0.07, 0.07, 0.022), color=PALETTE["travertine"])
+    d = sun((0.55, 0.55, -0.45), energy=5.0, angle_deg=1.4, color=(1.0, 0.88, 0.74))
+    screen(d, (0, 0.1, 0.2), pattern="leaves.png", distance=0.6, size=2.0, repeat=1.0)
+    area((-0.4, -0.5, 0.35), (0, 0, 0.12), size=1.2, energy=12)
+    camera((0.0, -0.6, 0.2), (0.0, 0.0, 0.13), lens=68, dof=0.6, fstop=5.6)
+    return 1600, 2000
+
+
+def ritual():
+    """Bath ledge: travertine edge, still water, linen."""
+    world(color=(0.9, 0.84, 0.78), strength=0.3)
+    room(wall_color=PALETTE["plaster"], floor_color=PALETTE["travertine"], wall_y=0.2)
+    stone((0, 0.02, 0.0), (0.7, 0.2, 0.1))
+    box("tub", (1.4, 0.4, 0.06), (0, -0.3, 0.03), textured_surface("tub", PALETTE["marble"], var=0.02, bump=0.05, scale=5, rough=0.3), bevel=0.004)
+    bottle(location=(-0.04, 0.0, 0.1), rotation_z=math.radians(10))
+    linen((0.11, 0.01, 0.1), size=(0.15, 0.11, 0.024))
+    d = sun((-0.55, 0.55, -0.45), energy=5.5, angle_deg=1.2, color=(1.0, 0.88, 0.74))
+    screen(d, (0, 0.1, 0.15), pattern="leaves.png", distance=0.6, size=2.0, repeat=1.1)
+    area((0.35, -0.5, 0.35), (0, 0, 0.15), size=1.2, energy=10)
+    camera((0.0, -0.6, 0.25), (-0.01, 0.0, 0.16), lens=72, dof=0.6, fstop=5.6)
+    return 1600, 2000
+
+
+def _group(items, color, plinths=None):
+    studio(color, key=15, sun_energy=3.2)
+    for p in plinths or []:
+        stone(*p)
+    top = 0
+    for range_key, loc, rot in items:
+        if range_key == "body_mist":
+            bottle(location=loc, rotation_z=rot)
+            top = max(top, loc[2] + BOTTLE_TOP)
+        else:
+            product(range_key, loc, rot)
+            top = max(top, loc[2] + product_height(range_key))
+    return top
+
+
+def family_body():
+    top = _group([
+        ("up_body_wash", (-0.105, 0.03, 0.0), 0.15),
+        ("body_mist", (-0.02, -0.01, 0.0), math.radians(-8)),
+        ("up_body_lotion", (0.06, 0.02, 0.0), -0.1),
+        ("up_hand_cream", (0.115, -0.03, 0.0), -0.25),
+        ("up_body_butter", (-0.065, -0.085, 0.0), 0.2),
+        ("up_body_scrub", (0.045, -0.095, 0.0), -0.15),
+    ], PALETTE["bg_body"])
+    camera((0.0, -0.62, 0.24), (0.0, -0.02, 0.07), lens=60, dof=0.62, fstop=8)
+    return 1600, 2000
+
+
+def family_face():
+    _group([
+        ("up_toner", (-0.09, 0.02, 0.0), 0.1),
+        ("up_cleanser", (-0.02, 0.035, 0.0), 0.0),
+        ("up_sunscreen", (0.05, 0.02, 0.0), -0.15),
+        ("up_serum", (0.105, -0.02, 0.0), -0.3),
+        ("up_moisturiser", (-0.06, -0.085, 0.0), 0.2),
+        ("up_mask", (0.03, -0.09, 0.0), -0.1),
+    ], PALETTE["bg_face"])
+    camera((0.0, -0.6, 0.23), (0.0, -0.02, 0.065), lens=60, dof=0.6, fstop=8)
+    return 1600, 2000
+
+
+def family_lip():
+    _group([
+        ("up_lip_treatment", (-0.016, 0.0, 0.0), 0.15),
+        ("up_lip_balm", (0.018, -0.012, 0.0), -0.2),
+    ], PALETTE["bg_lip"])
+    camera((0.0, -0.28, 0.08), (0.0, 0.0, 0.05), lens=85, dof=0.28, fstop=5.6)
+    return 1600, 2000
+
+
+def lineup():
+    """The whole proposed range on one long travertine shelf."""
+    world(color=(0.92, 0.85, 0.78), strength=0.3)
+    room(wall_color=PALETTE["plaster"], floor_color=PALETTE["sand"], wall_y=0.2)
+    stone((0, 0.0, 0.0), (1.1, 0.16, 0.05))
     z = 0.05
-    soft = textured_surface("soft_" + kind, (0.90, 0.86, 0.80), 0.02, 0.08, 30, 0.7)
-    clay = materials()["cap"]
-    sand = textured_surface("sand_" + kind, PALETTE["sand"], 0.02, 0.05, 30, 0.5)
-    rose = textured_surface("rose_" + kind, PALETTE["clay_soft"], 0.02, 0.05, 30, 0.5)
-    frost = materials()["glass"]
-    if kind == "body":
-        pump("wash", 0.03, 0.15, (-0.14, 0.09, z), soft, clay)
-        tube("lotion", 0.024, 0.15, (-0.05, 0.10, z), sand, clay, rot=0.2)
-        jar("butter", 0.045, 0.05, (0.05, 0.06, z), rose, clay)
-        tube("hand", 0.015, 0.09, (0.12, 0.05, z), soft, clay, rot=-0.3)
-        jar("scrub", 0.035, 0.04, (0.18, 0.12, z), sand, clay)
-    elif kind == "face":
-        pump("cleanser", 0.022, 0.12, (-0.16, 0.10, z), soft, clay)
-        cylinder("toner", 0.024, 0.14, (-0.08, 0.12, z), frost, bevel=0.004)
-        cylinder("toner_cap", 0.012, 0.02, (-0.08, 0.12, z + 0.14), clay, bevel=0.003)
-        dropper("serum", 0.018, 0.07, (-0.01, 0.06, z), frost, clay)
-        jar("cream", 0.034, 0.04, (0.07, 0.07, z), soft, clay)
-        tube("spf", 0.018, 0.11, (0.15, 0.11, z), sand, clay, rot=0.1)
-    else:  # lip
-        stick("balm", 0.009, 0.075, (-0.04, 0.08, z), soft, clay)
-        tube("treatment", 0.011, 0.075, (0.02, 0.09, z), rose, clay, rot=0.4)
-        stick("balm2", 0.009, 0.075, (0.07, 0.11, z), sand, clay)
-    d = sun(SUN_LEFT, energy=5.8, angle_deg=0.5)
-    screen(d, (0.02, 0.08, 0.14), pattern="jaali_arch.png", distance=0.9, size=4.0, window=3.4)
-    area((0.3, -0.9, 0.3), (0, 0, 0.1), size=1.6, energy=12)
-    if kind == "lip":
-        camera((0, -0.42, 0.13), (0.01, 0.09, 0.085), lens=85, dof=True, fstop=6.0)
-    else:
-        camera((0, -0.62, 0.17), (0.01, 0.08, 0.11), lens=55, dof=True, fstop=7.0)
-    return 1600, 2000
+    order = ["up_body_scrub", "up_body_wash", "up_body_lotion", "up_hand_cream", "up_body_butter", "body_mist",
+             "up_toner", "up_cleanser", "up_serum", "up_sunscreen", "up_moisturiser", "up_lip_treatment", "up_lip_balm", "up_mask"]
+    widths = {k: (RANGE[k][3]["r"] * 2 if k in RANGE else BOTTLE["w"]) for k in order}
+    gap = 0.012
+    total = sum(widths.values()) + gap * (len(order) - 1)
+    x = -total / 2
+    for i, k in enumerate(order):
+        cx = x + widths[k] / 2
+        yy = -0.01 + (0.012 if i % 2 else -0.008)
+        if k == "body_mist":
+            bottle(location=(cx, yy - 0.01, z), rotation_z=0.0)
+        else:
+            product(k, (cx, yy, z), rot=0.0)
+        x += widths[k] + gap
+    d = sun((0.6, 0.5, -0.45), energy=5.0, angle_deg=1.4, color=(1.0, 0.88, 0.74))
+    screen(d, (0, 0.1, 0.12), pattern="leaves.png", distance=0.6, size=2.4, repeat=1.0)
+    area((-0.4, -0.6, 0.35), (0, 0, 0.1), size=1.6, energy=16)
+    area((0.5, -0.5, 0.2), (0, 0, 0.1), size=1.2, energy=6)
+    camera((0.0, -1.32, 0.22), (0.0, 0.0, 0.1), lens=50, dof=1.32, fstop=11)
+    return 2400, 1350
 
 
-def upcoming_single(kind):
-    """One generic format behind reeded glass for each coming-soon item."""
-    world((0.94, 0.9, 0.85), 0.4)
-    walls = {"warm": PALETTE["limewash_warm"], "rose": PALETTE["rose_wall"], "lime": PALETTE["limewash"]}
-    shape, tone = kind
-    room(wall_color=walls[tone], wall_y=0.22)
-    plinth((0.26, 0.2, 0.06), (0, 0.06, 0.03))
-    z = 0.06
-    soft = textured_surface("soft", (0.90, 0.86, 0.80) if tone != "rose" else PALETTE["clay_soft"], 0.02, 0.08, 30, 0.7)
-    clay = materials()["cap"]
-    frost = materials()["glass"]
-    if shape == "pump":
-        pump("x", 0.03, 0.15, (0, 0.06, z), soft, clay)
-    elif shape == "tube":
-        tube("x", 0.024, 0.15, (0, 0.06, z), soft, clay, rot=0.3)
-    elif shape == "tube_small":
-        tube("x", 0.016, 0.10, (0, 0.06, z), soft, clay, rot=0.3)
-    elif shape == "jar":
-        jar("x", 0.045, 0.05, (0, 0.06, z), soft, clay)
-    elif shape == "jar_small":
-        jar("x", 0.034, 0.04, (0, 0.06, z), soft, clay)
-    elif shape == "dropper":
-        dropper("x", 0.02, 0.08, (0, 0.06, z), frost, clay)
-    elif shape == "toner":
-        cylinder("x", 0.026, 0.15, (0, 0.06, z), frost, bevel=0.004)
-        cylinder("xc", 0.013, 0.022, (0, 0.06, z + 0.15), clay, bevel=0.003)
-    elif shape == "stick":
-        stick("x", 0.010, 0.08, (0, 0.06, z), soft, clay)
-    d = sun(SUN_LEFT, energy=5.8, angle_deg=0.5)
-    screen(d, (0.0, 0.06, 0.14), pattern="jaali_arch.png", distance=0.9, size=4.0, window=4.0)
-    area((0.3, -0.9, 0.3), (0, 0, 0.1), size=1.6, energy=12)
-    small = shape in ("stick", "tube_small", "dropper", "jar_small")
-    tz = z + (0.05 if small else 0.075)
-    camera((0, -0.46 if small else -0.56, tz + 0.03), (0, 0.06, tz), lens=85 if small else 70, dof=True, fstop=6.0)
+HANDLES = {"body_mist": "body-mist-no-01", "up_body_wash": "body-wash", "up_body_lotion": "body-lotion", "up_body_scrub": "body-scrub",
+           "up_body_butter": "body-butter", "up_hand_cream": "hand-body-cream", "up_cleanser": "face-cleanser", "up_toner": "toner",
+           "up_serum": "face-serum", "up_moisturiser": "moisturiser", "up_sunscreen": "sunscreen", "up_mask": "face-masks",
+           "up_lip_balm": "lip-balm", "up_lip_treatment": "lip-treatment"}
+
+
+def hotspots(out_js):
+    """Project each product in the lineup scene into image space (percent) for the site's hotspots."""
+    import json
+    from bpy_extras.object_utils import world_to_camera_view
+    _mats.clear()
+    s = reset()
+    w, h = lineup()
+    s.render.resolution_x, s.render.resolution_y = w, h
+    bpy.context.view_layer.update()
+    cam = s.camera
+    spots = []
+    for ob in bpy.data.objects:
+        if not ob.name.endswith("_root"):
+            continue
+        key = ob.name[:-5]
+        rk = "body_mist" if key == "bottle" else next((k for k, v in RANGE.items() if v[0] == key), None)
+        if not rk:
+            continue
+        height = BOTTLE_TOP if rk == "body_mist" else product_height(rk)
+        p = world_to_camera_view(s, cam, ob.matrix_world.translation + Vector((0, 0, height * 0.55)))
+        spots.append({"handle": HANDLES[rk], "x": round(p.x * 100, 1), "y": round((1 - p.y) * 100, 1)})
+    spots.sort(key=lambda d: d["x"])
+    Path(out_js).write_text(
+        "// Generated by tools/render/scenes.py --hotspots — position of each product in the lineup image (% of width / height).\n"
+        f"export const hotspots = {json.dumps(spots, indent=2)};\n",
+        encoding="utf-8",
+    )
+    print("hotspots:", len(spots))
+
+
+def upcoming_single(range_key):
+    line = RANGE[range_key][1]
+    studio(LINES[line]["bg"])
+    JAR_LABEL["scale"] = 0.74  # close-up: keep the two-line wordmark within the jar's short body
+    product(range_key, (0, 0, 0), rot=0.0)
+    # frame by height, or by width for wide jars (product ≤ ~55% of the frame width)
+    width = 2 * RANGE[range_key][3]["r"]
+    frame(max(product_height(range_key), width * 1.27), fill=0.56, elev_deg=6, look_frac=0.48)
     return 1200, 1500
 
-
-UPCOMING = {
-    "up_body_wash": ("pump", "lime"),
-    "up_body_lotion": ("tube", "warm"),
-    "up_body_scrub": ("jar_small", "warm"),
-    "up_body_butter": ("jar", "rose"),
-    "up_hand_cream": ("tube_small", "lime"),
-    "up_cleanser": ("pump", "warm"),
-    "up_toner": ("toner", "lime"),
-    "up_serum": ("dropper", "rose"),
-    "up_moisturiser": ("jar_small", "lime"),
-    "up_sunscreen": ("tube", "warm"),
-    "up_mask": ("jar", "lime"),
-    "up_lip_balm": ("stick", "rose"),
-    "up_lip_treatment": ("tube_small", "rose"),
-}
 
 SCENES = {
     "hero_wide": hero_wide,
@@ -878,29 +1072,29 @@ SCENES = {
     "pack_front": pack_front,
     "pack_angle": pack_angle,
     "pack_open": pack_open,
-    "detail_cap": detail_cap,
-    "mist": mist,
-    "ritual_ledge": ritual_ledge,
-    "niche": niche,
     "detail_label": detail_label,
-    "wall_light": wall_light,
-    "up_group_body": lambda: upcoming_group("body"),
-    "up_group_face": lambda: upcoming_group("face"),
-    "up_group_lip": lambda: upcoming_group("lip"),
+    "mist": mist,
+    "vanity": vanity,
+    "ritual": ritual,
+    "lineup": lineup,
+    "family_body": family_body,
+    "family_face": family_face,
+    "family_lip": family_lip,
 }
-for key, val in UPCOMING.items():
-    SCENES[key] = (lambda v: (lambda: upcoming_single(v)))(val)
+for _k in RANGE:
+    SCENES[_k] = (lambda k: (lambda: upcoming_single(k)))(_k)
 
 
-SCALE = {"hero_wide": 1.0, "wall_light": 0.8}
-SCALE.update({k: 0.6 for k in UPCOMING})
+SCALE = {k: 0.85 for k in RANGE}
+SCALE.update({"pack_front": 0.9, "pack_angle": 0.8, "pack_open": 0.8, "detail_label": 0.8, "mist": 0.8,
+              "vanity": 0.8, "ritual": 0.8, "family_body": 0.8, "family_face": 0.8, "family_lip": 0.8})
 
 
 def render(name, samples, scale, threads):
     _mats.clear()
     s = reset()
     w, h = SCENES[name]()
-    scale = scale if scale != 1.0 else SCALE.get(name, 0.8)
+    scale = scale * SCALE.get(name, 1.0)
     s.render.resolution_x = int(w * scale)
     s.render.resolution_y = int(h * scale)
     s.render.resolution_percentage = 100
@@ -916,12 +1110,16 @@ def render(name, samples, scale, threads):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("scene", nargs="?", default="hero_portrait")
-    ap.add_argument("--samples", type=int, default=128)
+    ap.add_argument("scene", nargs="?", default="pack_front")
+    ap.add_argument("--samples", type=int, default=96)
     ap.add_argument("--scale", type=float, default=1.0)
     ap.add_argument("--threads", type=int, default=0)
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--hotspots", help="write lineup hotspot positions to this .js file and exit")
     a = ap.parse_args()
+    if a.hotspots:
+        hotspots(a.hotspots)
+        sys.exit()
     if a.list:
         print("\n".join(SCENES))
         sys.exit()

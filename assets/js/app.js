@@ -12,10 +12,10 @@ import { renderHeader, setHeaderOverlay } from './components/header.js';
 import { renderFooter } from './components/footer.js';
 import { renderBag, addToBag } from './components/bag-drawer.js';
 import { renderSearch } from './components/search.js';
-import { reveal, previewBadge, supportButton } from './components/misc.js';
+import { reveal, supportButton } from './components/misc.js';
 import { wireWaitlists } from './components/waitlist.js';
 import { closeActive } from './components/overlay.js';
-import { getProduct, getVariant } from './lib/catalog.js';
+import { getProduct, getVariant, isPurchasable } from './lib/catalog.js';
 import { route, navigate, SINGLE_FILE } from './lib/util.js';
 
 const pages = {
@@ -32,7 +32,6 @@ const pages = {
   search: () => import('./pages/search.js'),
   checkout: () => import('./pages/checkout.js'),
   order: () => import('./pages/order.js'),
-  account: () => import('./pages/account.js'),
   notfound: () => import('./pages/notfound.js'),
 };
 
@@ -53,7 +52,6 @@ const FILES = {
   'search.html': ['search'],
   'checkout.html': ['checkout'],
   'order.html': ['order'],
-  'account.html': ['account'],
   '404.html': ['notfound'],
 };
 
@@ -157,7 +155,6 @@ const start = async () => {
   renderHeader({ overlay: document.body.dataset.page === 'home' });
   renderBag();
   renderSearch();
-  previewBadge();
   supportButton();
 
   await renderPage();
@@ -170,7 +167,7 @@ const start = async () => {
     if (!b) return;
     const p = getProduct(b.dataset.quickAdd);
     const v = p && getVariant(p, b.dataset.variant);
-    if (p && v) addToBag(p, v, 1, b);
+    if (p && v && isPurchasable(p)) addToBag(p, v, 1, b);
   });
 
   document.body.classList.add('is-ready');

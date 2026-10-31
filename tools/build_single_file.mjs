@@ -1,5 +1,5 @@
 /**
- * Build ONE self-contained HTML file (dist/ruh-website.html) that opens by
+ * Build ONE self-contained HTML file (dist/gentle-company.html) that opens by
  * double-click, without a server: CSS, fonts, all JavaScript and images are
  * inlined, and every page is reachable through hash routes
  * (#/product.html?p=body-mist-no-01 …).
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = join(ROOT, 'dist');
-const OUT = join(OUT_DIR, 'ruh-website.html');
+const OUT = join(OUT_DIR, 'gentle-company.html');
 const tmp = mkdtempSync(join(tmpdir(), 'single-'));
 
 // 1. copy the sources that the bundle imports
@@ -60,8 +60,8 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rūh — Scent and skin, in softer light</title>
-<meta name="description" content="A body and skin care house making calm, sensory rituals — beginning with Body Mist Nº 01. Single-file preview build.">
+<title>Gentle Company — Body and skin care, gently made</title>
+<meta name="description" content="Gentle Company makes body and skin care for India, beginning with Body Mist Nº 01.">
 <meta name="theme-color" content="#f6f1ea">
 <link rel="icon" href="${favicon}">
 <style>

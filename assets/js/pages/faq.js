@@ -12,7 +12,7 @@ export default function faq(main) {
   <header class="page-hero" style="padding-bottom:32px">
     <p class="eyebrow">Help</p>
     <h1 class="page-hero__title">Questions, <em>answered.</em></h1>
-    <p class="lede">Where an answer depends on details we are still confirming, we say so plainly rather than guess.</p>
+    <p class="lede">Answers about our products and orders.</p>
   </header>
   ${groups
     .map(

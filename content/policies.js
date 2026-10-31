@@ -1,5 +1,5 @@
 /**
- * Policy pages — DRAFTS for GentleCare, written for an Indian D2C seller.
+ * Policy pages for Gentle Company, written for an Indian D2C seller.
  * Have them reviewed by a lawyer before launch.
  *
  * {{tokens}} are filled from site.config.js (company, contact, shipping).
@@ -14,6 +14,13 @@
  */
 export const policies = {
   updated: null, // e.g. '1 December 2026' — the date these policies take effect
+
+  /**
+   * Which policies are published. A policy marked false shows a short notice
+   * that it will be published before the first order, never draft text.
+   * Privacy is published now because the site already collects email sign-ups.
+   */
+  published: { privacy: true, shipping: false, terms: false },
 
   shipping: {
     title: 'Shipping & Returns',
@@ -46,7 +53,7 @@ export const policies = {
     title: 'Privacy Policy',
     intro: 'This policy explains what personal data {{seller}} collects through this website, why, who we share it with, and the rights you have under the Digital Personal Data Protection Act, 2023.',
     sections: [
-      { h: 'Who is responsible', p: '{{seller}} ("GentleCare", "we"), {{address}}, is the Data Fiduciary for personal data collected on this website and through orders for {{brand}} products. Contact us at {{email}}.' },
+      { h: 'Who is responsible', p: '{{sellerNamed}} is the Data Fiduciary for personal data collected on this website. {{addressLine}}You can reach us {{contactRoute}}.' },
       {
         h: 'What we collect',
         list: [
@@ -54,7 +61,7 @@ export const policies = {
           'Delivery details: postal address and PIN code.',
           'Order details: products purchased, amounts, order and payment references. Card, UPI and bank details are collected and processed by our payment partner Razorpay — we never see or store them.',
           'Messages you send us, and your email preferences if you join our list.',
-          'Information your browser stores on your own device to run the site (your bag and recently viewed items, in local storage).',
+          'Information your browser stores on your own device to run the site (for example your bag and recently viewed items, in local storage).',
         ],
       },
       {
@@ -73,9 +80,9 @@ export const policies = {
         p: 'We share only what each partner needs to do their job, under contract:',
         list: [
           'Razorpay — payment processing.',
-          '[Courier partner] — delivery of your order.',
-          'Netlify — website hosting and form submissions.',
-          '[Email service provider] — sending order updates and, with consent, newsletters.',
+          'Vercel — website hosting.',
+          'Brevo — storing email sign-ups and sending our emails, with your consent.',
+          'Our delivery partner — delivering your order, once our shop is open.',
           'Government or regulatory authorities, where the law requires it.',
         ],
         after: 'We do not sell your personal data.',
@@ -92,10 +99,10 @@ export const policies = {
           'Nominate another person to exercise these rights on your behalf in case of death or incapacity.',
           'Have your grievances addressed by us, and complain to the Data Protection Board of India.',
         ],
-        after: 'To exercise any of these rights, write to our Grievance Officer: {{grievance}}.',
+        after: 'To exercise any of these rights, contact us {{contactRoute}}.',
       },
       { h: 'Children', p: '{{brand}} products and this website are intended for adults. We do not knowingly collect personal data from anyone under 18 without verifiable consent from a parent or guardian.' },
-      { h: 'Local storage and analytics', p: 'This website stores your bag and recently viewed items in your browser’s local storage so they persist between visits; this data stays on your device. We do not use advertising cookies. [If analytics are enabled, name the tool and what it collects.]' },
+      { h: 'Local storage and analytics', p: 'This website stores small preferences, such as recently viewed items, in your browser’s local storage; this data stays on your device. We do not use advertising cookies or analytics tracking.' },
       { h: 'Changes to this policy', p: 'We will post any changes here and update the date below. If a change materially affects how we use your data, we will tell you.' },
     ],
   },
@@ -113,7 +120,7 @@ export const policies = {
       { h: 'Delivery, cancellations, returns and refunds', p: 'These are set out in our Shipping & Returns policy, which forms part of these terms.' },
       { h: 'Using our products safely', p: 'Our products are for external use only. Patch test before first use, avoid the eyes and broken or irritated skin, and stop using a product if irritation occurs. Information on this website is not medical advice.' },
       { h: 'Reviews', p: 'We publish only genuine reviews from customers and never pay for or write reviews without clear disclosure. We do not edit reviews to change their meaning.' },
-      { h: 'Intellectual property', p: 'The {{brand}} name and logo, the GentleCare name, and the text, images and design of this website belong to {{seller}} and may not be used without our written permission.' },
+      { h: 'Intellectual property', p: 'The {{brand}} name and logo, and the text, images and design of this website belong to {{seller}} and may not be used without our written permission.' },
       { h: 'Liability', p: 'We are responsible for losses that are a foreseeable result of our breaking these terms or failing to use reasonable care. We are not responsible for losses caused by events outside our reasonable control. This does not exclude any liability that cannot be excluded under Indian law.' },
       {
         h: 'Complaints and grievance redressal',

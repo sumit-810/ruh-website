@@ -1,101 +1,148 @@
-# Implementation Report
+# Implementation Report: Gentle Company redesign
 
-*Phase 1 (below) built the brand website. [Phase 2](#phase-2-commercial-readiness-rūh-by-gentlecare) made it commercially ready and integrated GentleCare.*
+**Date:** 31 October 2026.
+**Scope:** a full rebrand to **Gentle Company** and a product-first redesign of the existing website (`sumit-810/ruh-website`, deployed on Vercel).
 
-## Competitors studied
-**18 homepages and 6 product pages, accessed via Firecrawl (remote rendering, desktop + mobile screenshots, structured extraction):**
-Sol de Janeiro, Rhode, Aesop, Byredo, Glossier, Rare Beauty, Fenty Skin, The Ordinary (India), Bath & Body Works (India + US PDP), Laneige (KR), Forest Essentials, Kama Ayurveda*, Minimalist, Plum*, Dot & Key, Foxtale, Mamaearth (intl.), Pilgrim, mCaffeine, plus Kimirica (Indian body-mist PDP) and Nykaa's body-mist listing for pricing.
-*Kama returned only a sign-in modal and Plum's PDP redirected, so evidence there is limited. Full log and limitations: `RESEARCH_EVIDENCE.md`.
-
-**Tooling honesty:** Firecrawl was used throughout. Claude in Chrome and a "Frontend Design" tool were not available in this session, and direct browsing of competitor sites (and Unsplash/Pexels) was blocked by the environment's network policy, so visual inspection used Firecrawl screenshots. Playwright was used for all QA of our site. Context7 was available but not needed: the site uses no third-party libraries, and Blender 5.2 API questions were answered by introspecting the installed module.
-
-## Design direction, and why
-**"Soft Architecture"**: warm limewash, travertine and a terracotta-clay accent, lit by sun falling through a carved Indian *jaali* screen; Bodoni Moda (editorial Didone) with Jost (geometric sans).
-- Indian D2C beauty is loud (B2G4 offers, saturated grids). Indian luxury is ornate heritage. International premium is cool and austere. A calm, warm, architectural world fills the gap and reads as both Indian and international.
-- Light is an ownable signature (no competitor uses it) and a natural metaphor for gentle care.
-
-## What makes it distinctive
-- The jaali-light signature runs through every image, the star glyph in eyebrows, and the favicon.
-- A coherent product world: a concept bottle (frosted glass, terracotta cap, champagne collar) plus blank plaster maquettes for every upcoming format.
-- **Calm commerce:** no pop-ups, countdowns, fake counters or badge walls. An honest single price, MRP and net-quantity cues for India.
-- Coming Soon is treated as content: six category tiles, three preview pages, per-item Notify Me.
-
-## Pages & features built
-Home · Shop all (category + availability filters, URL-synced) · Body Mist PDP · Body / Face / Lip Care Coming Soon pages · Our Story · Journal + 3 articles · Contact · FAQs · Shipping & Returns, Privacy, Terms (outlines) · Search page + overlay · Demo checkout · Account placeholder · 404.
-Mega menus, mobile drawer, rotating announcement bar (with pause), transparent-to-frosted sticky header, bag drawer (add/remove/quantities/subtotal/persistence/free-shipping meter slot), quick add, product gallery (thumbnails, swipe, dots, keyboard), sticky purchase bar, scent pyramid, accordions, honest forms (newsletter, waitlist, notify me, contact) with validation, recently viewed, JSON-LD product data, preview-mode placeholder markers.
-
-## What was tested (Playwright + axe-core)
-- `qa/smoke.mjs`: 20 pages × 1440 / 820 / 390 px. **0** console errors, failed requests, broken images or horizontal overflow.
-- `qa/interactions.mjs`: **49/49 checks pass**. Add to bag (PDP, featured, sticky bar), quantity stepper and cap, subtotal maths, persistence across reload, removal, Escape/focus handling, mega menu, mobile menu, search, newsletter validation and honest messaging, shop filters + URL sync, notify-me panels, no purchase on coming-soon items, FAQ keyboard toggling, all internal links resolve, demo checkout validation (never claims an order), and **axe-core WCAG A/AA scans of 6 key templates with 0 violations**.
-- `qa/perf.mjs`: 45–155 KB first load per page, LCP about 0.2–0.3 s, CLS 0.000–0.008 (local, unthrottled).
-- **Bugs found and fixed during QA:** header not sticking; focus lost after a bag re-render (Escape stopped working); the sticky bar missed fast scrolls; mobile overflow; contrast tokens; layout shift (CLS 0.38 → 0.008); tablet layouts; double hero download.
-
-## Provisional content (marked on-site while `previewMode: true`)
-Brand name "Rūh" (working name), tagline and brand copy · product name system, scent name "First Light", scent descriptor, **all scent notes**, family, mood, occasions · price ₹1,295 and 100 ml size · benefits, how-to-use · announcement messages · service promises · contact email/hours · philosophy commitments · policy pages · all product imagery (concept renders).
-
-## Business details still required before launch
-Trademark-cleared name and logo · perfumer's final notes · final INCI ingredient list · price/sizes/SKUs · Legal Metrology declarations (manufacturer, marketer, country of origin, best-before, customer care) · label directions and cautions · any safety/testing evidence before any claim · real photography · shipping/COD/returns/privacy/terms (with legal advice, including DPDP Act 2023) · registered address and grievance officer · email inbox, phone/WhatsApp, social accounts · founder's note.
-
-## Limitations / integrations pending (phase 1; see phase 2 for what changed)
-- **Payments:** demo checkout only. Ready for Shopify cart permalinks or a custom endpoint (Razorpay/Cashfree/PayU), with UPI support recommended.
-- **Forms:** not connected (`site.forms.provider: 'none'`), and the UI says so honestly. Formspree, Netlify or a custom endpoint can be plugged in from config.
-- **Reviews, accounts, order emails, inventory, analytics:** not implemented (no real data).
-- **Rendering:** client-side from `site.config.js` (simple to edit). Pre-render for production SEO.
-- **Imagery:** concept renders, no human/lifestyle photography.
-
+Earlier phases built the original site and its checkout. Their history is in git (commits `8e8e3e3` and `77a01e7`).
 
 ---
 
-## Phase 2: commercial readiness (Rūh by GentleCare)
+## 1. Research
 
-This phase responds to the review, which scored the concept 8.5, positioning 8.5, product presentation 8 and **commercial readiness 3/10**. The direction was kept and nothing was rebuilt from scratch. **GentleCare** is the company and **Rūh** is its brand.
+Live sites were accessed on 31 Oct 2026 through Firecrawl: desktop and mobile screenshots plus structured extraction, with every visual claim checked against the screenshots. Full notes, URLs and answers to the eight research questions are in [`RESEARCH_AND_DESIGN_STRATEGY.md`](RESEARCH_AND_DESIGN_STRATEGY.md).
 
-### What changed
-
-| Review priority | What was done |
+| Group | Brands examined |
 |---|---|
-| 3. Real payment gateway and checkout | **Razorpay Standard Checkout** (UPI, cards, net banking, wallets) through two Netlify Functions. <ul><li>The server re-prices the bag from the catalogue, so tampered prices are ignored.</li><li>Payments are verified by HMAC-SHA256 signature with a timing-safe compare.</li><li>There is an order confirmation page and Buy Now.</li><li>Optional COD (off by default).</li><li>One pricing module, used by the bag, checkout and server: delivery charge, free-delivery threshold, COD fee and limit.</li></ul> |
-| 4. Newsletter and waitlist connected | **Netlify Forms** (early-access, notify-me, contact, cod-order) with hidden detection forms and honeypots. <ul><li>A success message is shown only on a 2xx response.</li><li>Local previews say plainly that nothing was sent.</li></ul> |
-| 5. Replace hello@example.com | The placeholder is removed. `contact.email` is `null` until GentleCare supplies its inbox, and the site shows "to be added before launch" in its place. It never shows a fake address. |
-| 6. Finalise policies | Full **India-specific drafts** in `content/policies.js`: <ul><li>Shipping & Returns.</li><li>Privacy (DPDP Act 2023 and Rules 2025).</li><li>Terms (Consumer Protection Act 2019 and E-Commerce Rules 2020, including the 2026 amendment's grievance duties).</li></ul> Company, contact and delivery details fill in automatically. The 13 business decisions are highlighted in brackets. The FAQs were rewritten to match. |
-| 7. Remove the Preview banner and provisional content | A **launch gate**: <ul><li>`tools/launch_check.mjs` lists the blockers, warnings and manual checks.</li><li>`previewMode: false` removes every placeholder marker and hides the provisional service notes.</li><li>The Netlify build **fails** while blockers remain.</li></ul> `LAUNCH_CHECKLIST.md` gives the human steps. |
-| 1. Real photography | A **photo-first image pipeline**: <ul><li>Photos go in `assets-src/photography/`. The manifest records photo or render per image.</li><li>Concept-render captions disappear for each image once its photo exists.</li><li>Renders stay for anything not yet shot.</li></ul> `PHOTOGRAPHY_BRIEF.md` gives the shot list, crops, look and specs. |
-| 2. Finalise notes, ingredients and claims | Not invented. These must come from the perfumer and formulator. They remain flagged on the site and are **blockers** in the launch check. |
+| International skincare and DTC | Rhode (home and PDP, desktop and mobile), Glossier, Rare Beauty, Fenty Skin |
+| Fragrance and body | Sol de Janeiro (home and PDP, desktop and mobile), Kayali (home and PDP), Byredo |
+| Mass-premium body and mists, India | Bath & Body Works India, Victoria's Secret India, Plum BodyLovin' (collection, mobile collection, mist PDP) |
+| Indian premium and D2C | Forest Essentials, Kama Ayurveda, Minimalist, Foxtale, Dot & Key |
 
-**Brand differentiation**
-- A real **vector logo system**: the RŪH wordmark outlined from Bodoni Moda with a custom macron, the jaali star, and the "Rūh by GentleCare" lockups (light and dark), plus a social avatar.
-- Usage rules in `BRAND_DESIGN_SYSTEM.md` §11.
+**Not usable:**
+- Aesop India returned a 404.
+- The Nykaa Wanderlust brand page returned a 404.
+- mCaffeine was captured on its loading screen.
+- Forest Essentials' hero image did not load.
 
-**GentleCare throughout**
-- Footer endorsement and copyright.
-- A "Made by GentleCare" chapter on Our Story.
-- The seller block on the Contact page.
-- "Marketed by" on the product page.
-- Organization and seller JSON-LD.
-- Page titles and the form consent text.
+These are reported as such and no claims are made from them.
 
-**Support:** a WhatsApp button appears once a number is set, and the contact page shows the seller and grievance officer.
+**What drove the design:**
+- Image-led heroes with headlines of 10 words or fewer.
+- Scent shown through props and colour rather than paragraphs.
+- Notes presented as chips.
+- Products visible within the first mobile screen.
+- Shelves tabbed by category.
+- "Join waitlist" in place of "Buy" when a product isn't available (as Rhode does).
+- No pop-ups.
 
-**Deploy:** `netlify.toml` and `tools/build_public.mjs` publish only the public site, with security headers, `robots.txt` and a sitemap. Internal docs are never deployed.
+## 2. Design direction: "Daylight vanity"
 
-### Tested
+The look is warm plaster and travertine, soft leaf-shadow window light, clear glass with glowing apricot liquid, matte packaging in a colour for each line, and cocoa ink.
 
-| Suite | Result |
+**Typography:**
+- Wordmark: **Marcellus**, chosen for its soft flared serifs.
+- Headlines: **Cormorant Garamond**.
+- UI and body text: **Instrument Sans**.
+
+The site follows a "75% visual, 25% words" principle. The details are in [`GENTLE_COMPANY_BRAND_GUIDELINES.md`](GENTLE_COMPANY_BRAND_GUIDELINES.md).
+
+## 3. How the new site differs from the old one
+
+| Before | Now |
 |---|---|
-| `qa/functions.test.mjs` (`node --test`) | **7/7**: price tampering ignored, invalid bag or customer rejected, missing keys give 503, gateway errors give 502, signatures valid or invalid |
-| `qa/checkout.mjs` | **12/12**. The full flow from bag to Razorpay (stubbed) to verify to confirmation, using the real function code with a mocked Razorpay API |
-| `qa/interactions.mjs` | **49/49**, including axe-core WCAG A/AA on 6 templates. Tests were updated for Buy Now, the real checkout, and the preview fallback that never claims an order |
-| `qa/smoke.mjs` | Every page at 3 viewports: 0 console errors, failed requests, broken images or overflow |
-| `qa/single-file.mjs` | 27/27 |
-| `qa/perf.mjs` | 60–210 KB first load, LCP about 0.15–0.23 s, CLS ≤ 0.008 (local) |
-| Production mode (`previewMode: false`) | No badge and no placeholder markers. The policies still show "Draft" until their brackets are resolved, and the deploy build refuses to publish |
+| Editorial, text-led. The hero was a manifesto; a large "We make body and skin care for the unhurried moments…" statement filled a screen. Repeated philosophy sections | The hero is the product: Body Mist Nº 01 with GENTLE COMPANY on the label, a six-word headline, one line and one CTA. Brand intro cut to a headline plus two lines |
+| Products appeared after several text sections | A collection shelf comes straight after the hero, tabbed All / Body / Face / Lip, with hover images, quick view and arrows plus progress |
+| Upcoming items shown as blank plaster forms | The whole range shown in one packaging system, each item labelled "In development" with a notify-me |
+| "Placeholder", "To confirm", "Concept render" and "Preview build" visible on the site; an unconfirmed ₹1,295 price and 100 ml size; invented notes and benefits | **Nothing unconfirmed is shown.** Missing fields are hidden. No price, so the page shows **Notify me**. No notes, so no notes section. Preview mode removed entirely |
+| Checkout reachable in a demo mode | Checkout and bag appear only when `commerce.enabled` is true and a price is confirmed. Until then `checkout.html` explains the shop opens soon |
+| Netlify Forms and Netlify Functions, though the site deploys on Vercel | Vercel functions: `/api/subscribe` and `/api/contact` (Brevo), `/api/create-order` and `/api/verify-payment` (Razorpay) |
+| Account page (non-functional) | Removed |
 
-### Still needed from GentleCare (the launch check reports these as blockers)
-- Legal name and registered address, GSTIN, and the business email.
-- A grievance officer.
-- A trademark search for "Rūh".
-- The perfumer's notes, the INCI list, and the Legal Metrology fields (manufacturer, origin, best-before).
-- Product photography.
-- The delivery and returns decisions.
-- Razorpay activation and keys, and Netlify form notifications.
-- A lawyer's review of the policies.
+**Homepage sections:**
+1. Product hero.
+2. Collection shelf.
+3. Shop by category: three image tiles with product counts and status.
+4. Brand intro: one image, a headline and two lines.
+5. Body Mist experience: a switcher of moments images, plus notes chips once confirmed.
+6. What comes next: the full range photographed on one shelf, with **interactive hotspots** for every product.
+7. Early access, connected to Brevo.
+8. Compact footer.
+
+**Product page:**
+- **Gallery:** seven images with thumbnails, arrows, swipe, keyboard control and zoom on click that follows the pointer.
+- **Buy box:** "Launching soon" with notify-me. It turns into size, price, quantity, Add to bag and Buy now automatically when the product can be sold.
+- **Accordions:** each appears only when its data exists (Details, Scent, How to use, Ingredients, Product information, Questions).
+- **Other sections:** an "In the everyday" moments strip, a "Discover the range" shelf, and a sticky mobile bar.
+
+**Collection, Shop and Story:**
+- **Collections:** an image hero and a grid of cards with status.
+- **Shop:** tabbed by line, synced to the URL.
+- **Story:** one wide image and three short chapters.
+
+## 4. Visual identity and packaging
+
+- **Logo system** (`tools/build_brand.py`, all vector outlines):
+  - the GENTLE COMPANY wordmark (one line), with an ivory version;
+  - a stacked lockup for packaging;
+  - a GC monogram in a soft arch;
+  - the favicon, Apple touch icon and social avatar;
+  - a share image with the wordmark composited onto the hero.
+- **Packaging, Body Mist Nº 01:** heavy clear glass, apricot liquid, a cream paper label (GENTLE / COMPANY, BODY MIST, Nº 01) and a cocoa cap with a champagne collar.
+- **Packaging, the range:** apricot for body, milk for face, rose for lip. Every pack carries the stacked GENTLE COMPANY lockup and its product name, with cocoa caps.
+- **Accurate brand text:** every label is typeset from the brand fonts (`tools/render/make_textures.py`) and applied as a texture in Blender (`tools/render/scenes.py`). The brand name on every bottle, tube and jar is real type, not AI-generated lettering.
+- **26 rendered images:**
+  - campaign hero (wide and portrait);
+  - packshots (front, angle, open, label macro);
+  - mist, vanity and bath-ledge scenes;
+  - the full range lineup;
+  - three category groups;
+  - 13 single products.
+
+  Hotspot positions are computed by projecting each product through the scene camera.
+
+## 5. How the old branding was removed
+
+- **Assets:**
+  - all old logo SVGs and the social avatar deleted;
+  - every rendered image regenerated with GENTLE COMPANY labels (the old images, whose labels showed the old name, were deleted);
+  - old label and lattice textures and the Bodoni and Jost fonts removed.
+- **Code:**
+  - wordmark, header, footer, titles, meta and Open Graph tags, JSON-LD, alt text, page shells, policies and the payment merchant name all updated;
+  - order references changed from `RUH-…` to `GC-…`, and storage keys renamed;
+  - the single-file build is now named `gentle-company.html`.
+- **Company:** the earlier "GentleCare" endorsement has been removed as well, so the site carries one identity only. If the registered legal entity has a different name, enter it in `site.company.legalName`; it then appears only where the law requires the seller's legal name.
+- **Docs:** the old strategy and design-system documents were replaced by the new ones. The research evidence log carries a note about the rename.
+- **Audit:** `qa/brand-audit.mjs` renders every page and scans visible text, titles, meta tags, alt text, ARIA labels and JSON-LD for the retired name and for placeholder language. It also scans every published file. *Result: see §7.*
+- **Account changes not made:** the Vercel project (`ruh-website-virid.vercel.app`) and the GitHub repository still carry the retired name. The README gives safe rename steps; these are account changes, so they were not made.
+
+## 6. Interactions implemented
+
+- Collection shelf: tabs, arrows and a progress bar.
+- Hover image on cards.
+- Quick view: a dialog with a focus trap, notify-me or add to bag.
+- Mega menus showing product images.
+- Image-first mobile menu.
+- Product gallery: thumbnails, arrows, swipe, keyboard control and zoom.
+- Accordions.
+- Sticky mobile purchase bar.
+- Moments switcher (pauses when the visitor chooses).
+- Range hotspots with popovers.
+- Search overlay.
+- Bag drawer, when the shop is open.
+- Scroll reveals, respecting `prefers-reduced-motion`.
+
+## 7. Testing
+
+See §7 of the final summary below. It is filled in after the full QA run.
+
+## 8. Business information still required
+
+`node tools/launch_check.mjs` prints the live list:
+- the legal name and registered address, plus GSTIN and CIN;
+- a business email and phone number, and a grievance officer;
+- Brevo and Razorpay keys in Vercel;
+- for Body Mist Nº 01: size, price, scent notes, ingredients (INCI), how to use, and the Legal Metrology fields;
+- decisions for the Shipping and Terms policies, and a legal review;
+- photography of the manufactured packaging;
+- a trademark search for "Gentle Company";
+- a domain.

@@ -1,15 +1,26 @@
 /**
  * End-to-end checkout test. The browser runs the real checkout page; /api/*
- * calls are answered by the real Netlify function code (Razorpay's REST API
+ * calls are answered by the real server code (server/) (Razorpay's REST API
  * and its Checkout popup are simulated — no network, no money).
  *
  *   python3 -m http.server 8080 &   # project root
  *   node qa/checkout.mjs
  */
 import { createRequire } from 'node:module';
-import { createOrder } from '../netlify/functions/create-order.mjs';
-import { verifyPayment, signatureFor } from '../netlify/functions/verify-payment.mjs';
+import { createOrder } from '../server/create-order.mjs';
+import { verifyPayment, signatureFor } from '../server/verify-payment.mjs';
 import { quote } from '../assets/js/lib/pricing.js';
+import { products } from '../site.config.js';
+
+// Test fixture: the shipped config has no confirmed price, so open the shop in
+// memory (server side) and in the browser (site.config.js is rewritten in flight).
+products[0].available = true;
+Object.assign(products[0].variants[0], { size: '100 ml', price: 1500, available: true });
+const openShop = (body) =>
+  body
+    .replace('enabled: false,', 'enabled: true,')
+    .replace('available: false, // set true', 'available: true, // set true')
+    .replace("variants: [{ id: 'bm01', size: null, price: null, compareAtPrice: null, sku: null, available: false }]", "variants: [{ id: 'bm01', size: '100 ml', price: 1500, compareAtPrice: null, sku: null, available: true }]");
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const BASE = process.argv[2] || 'http://localhost:8080';
@@ -55,6 +66,10 @@ const scenario = async (name, { signature, mockApi = true }) => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`${name}: ${e.message}`));
+  await page.route('**/site.config.js', async (route) => {
+    const res = await route.fetch();
+    route.fulfill({ response: res, body: openShop(await res.text()) });
+  });
   if (mockApi) {
     await page.route('**/api/create-order', async (route) => route.fulfill(await fromResponse(await createOrder(toRequest(route.request()), env, fakeRazorpayApi))));
     await page.route('**/api/verify-payment', async (route) => route.fulfill(await fromResponse(await verifyPayment(toRequest(route.request()), env, fakeRazorpayApi))));
@@ -77,11 +92,11 @@ const scenario = async (name, { signature, mockApi = true }) => {
   const opts = await page.evaluate(() => window.__rzpOptions || null);
   ok('Checkout opens Razorpay with the server order', razorpayOrder?.id === ORDER_ID);
   ok('Amount charged equals the total shown', razorpayOrder.amount === shownTotal * 100, `₹${shownTotal} → ${razorpayOrder.amount} paise`);
-  ok('Charged amount comes from the catalogue', razorpayOrder.amount === quote([{ handle: 'body-mist-no-01', variantId: 'bm01-100', qty: 2 }]).total * 100);
+  ok('Charged amount comes from the catalogue', razorpayOrder.amount === quote([{ handle: 'body-mist-no-01', variantId: 'bm01', qty: 2 }]).total * 100);
   ok('Customer details reach the Razorpay order notes', razorpayOrder.notes.customer_name === 'Asha Rao' && razorpayOrder.notes.address.includes('560001'));
   ok('Verified payment lands on the confirmation page', (await page.textContent('main')).includes('Your order is confirmed'));
   ok('Confirmation shows the receipt reference', (await page.textContent('main')).includes(razorpayOrder.receipt));
-  ok('Bag is emptied after payment', (await page.textContent('[data-bag-count]')).trim() === '0');
+  ok('Bag is emptied after payment', ['', '0'].includes((await page.textContent('[data-bag-count]')).trim()));
   await page.screenshot({ path: new URL('./screens/checkout-confirmed.png', import.meta.url).pathname, fullPage: true });
   await ctx.close();
 }
@@ -95,12 +110,12 @@ const scenario = async (name, { signature, mockApi = true }) => {
   await ctx.close();
 }
 
-// 3. preview without a payment server: honest fallback, nothing charged
+// 3. payment server unavailable: honest error, nothing charged
 {
-  const { ctx, page } = await scenario('preview', { mockApi: false });
-  await page.waitForFunction(() => document.querySelector('[data-status]')?.textContent.includes('nothing was charged'), null, { timeout: 10000 });
-  ok('Preview without payment server says nothing was charged', true);
-  ok('No confirmation page in preview fallback', page.url().includes('checkout.html'));
+  const { ctx, page } = await scenario('no-server', { mockApi: false });
+  await page.waitForFunction(() => /charged/i.test(document.querySelector('[data-status]')?.textContent || ''), null, { timeout: 10000 });
+  ok('Without a payment server the customer is told nothing was charged', /nothing has been charged/i.test(await page.textContent('[data-status]')));
+  ok('No confirmation page without a payment server', page.url().includes('checkout.html'));
   await ctx.close();
 }
 

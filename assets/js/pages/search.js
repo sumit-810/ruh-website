@@ -11,7 +11,7 @@ export default function searchPage(main) {
     <p class="eyebrow">Search</p>
     <form role="search" action="search.html" class="inline-form" style="max-width:640px">
       <label class="visually-hidden" for="sp-q">Search the site</label>
-      <input class="input" id="sp-q" type="search" name="q" value="${esc(q)}" placeholder="Search products, rituals, journal">
+      <input class="input" id="sp-q" type="search" name="q" value="${esc(q)}" placeholder="Search products and the journal">
       <button class="btn" type="submit">Search</button>
     </form>
   </header>

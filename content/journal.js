@@ -13,7 +13,7 @@ export const journal = [
     category: 'Ritual',
     date: null,
     readingTime: '4 min read',
-    image: 'ritual_ledge',
+    image: 'ritual',
     body: [
       { p: 'A body mist is not a weaker perfume. It is a different object, made for a different rhythm: lighter, airier, and designed to be returned to through the day rather than applied once in the morning.' },
       { h: 'Start with skin that is ready' },

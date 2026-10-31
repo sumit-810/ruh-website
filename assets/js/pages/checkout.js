@@ -10,7 +10,7 @@ import { storage } from '../lib/storage.js';
 const STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
 
 const RAZORPAY_JS = 'https://checkout.razorpay.com/v1/checkout.js';
-const LAST_ORDER = 'ruh.lastOrder.v1';
+const LAST_ORDER = 'gc.lastOrder.v1';
 
 const loadRazorpay = () =>
   window.Razorpay
@@ -45,8 +45,8 @@ const complete = (order) => {
  * Checkout.
  * - 'razorpay': server prices the bag (/api/create-order), Razorpay Checkout takes payment,
  *   /api/verify-payment checks the signature before the order is confirmed.
- * - Cash on delivery (if enabled in site.shipping.cod): order is sent as a Netlify Form for manual confirmation.
- * - When the payment server isn't reachable on a preview build, a clearly labelled demo runs instead — no money moves.
+ * - Cash on delivery (if enabled in site.shipping.cod): the order is emailed to the business via /api/contact for manual confirmation.
+ * - The page is only reachable as a checkout when site.commerce.enabled is true.
  */
 export default function checkout(main) {
   setTitle('Checkout');
@@ -58,6 +58,11 @@ export default function checkout(main) {
     return;
   }
 
+  if (!site.commerce.enabled || cfg.provider === 'demo') {
+    main.innerHTML = `<section class="container empty-state"><h1 class="t-2xl">Our shop opens <em>soon.</em></h1><p class="lede">Body Mist Nº 01 is launching soon. Leave your email on the product page and we’ll write as soon as it’s available.</p><a class="btn" href="product.html?p=body-mist-no-01#notify">Get notified</a></section>`;
+    return;
+  }
+
   if (!lines.length) {
     main.innerHTML = `<section class="container empty-state"><h1 class="t-2xl">Your bag is <em>empty.</em></h1><p class="lede">Add something to your bag before checking out.</p><a class="btn" href="product.html?p=body-mist-no-01">Shop Body Mist</a></section>`;
     return;
@@ -65,7 +70,6 @@ export default function checkout(main) {
 
   const cod = site.shipping.cod || {};
   const plain = lines.map((l) => ({ handle: l.handle, variantId: l.variantId, qty: l.qty }));
-  const demoOnly = cfg.provider === 'demo';
 
   main.innerHTML = `
 <div class="container">
@@ -73,7 +77,6 @@ export default function checkout(main) {
     <p class="eyebrow">Checkout</p>
     <h1 class="page-hero__title">Almost <em>yours.</em></h1>
   </header>
-  ${demoOnly ? `<div class="notice" style="margin-bottom:48px" role="note">${icon.info}<span><strong>Demo checkout.</strong> Payments are switched off in the site settings. No order will be placed and nothing will be charged.</span></div>` : ''}
   <div class="checkout">
     <form data-checkout novalidate>
       <fieldset>
@@ -152,14 +155,7 @@ export default function checkout(main) {
     return d;
   };
 
-  const runDemo = (why) =>
-    say(
-      'info',
-      `${why} No order has been placed and nothing was charged.`
-    );
-
   const payOnline = async () => {
-    if (demoOnly) return runDemo('Demo complete — your details are valid.');
     let created;
     try {
       created = await postJson('/api/create-order', { lines: plain, customer: customer() });
@@ -170,8 +166,6 @@ export default function checkout(main) {
       const code = created.data?.error;
       if (code === 'invalid-bag') return say('error', 'Something in your bag is no longer available. Please review your bag and try again.');
       if (code === 'invalid-customer') return say('error', 'Please check your contact and delivery details and try again.');
-      if (site.previewMode && (created.status === 0 || created.status === 404 || created.status === 405 || created.status === 501 || code === 'payments-not-configured'))
-        return runDemo('Preview: online payment runs through Razorpay on the live site, and the payment server isn’t connected on this preview.');
       return say('error', 'We couldn’t start the payment. Nothing has been charged — please try again in a moment.');
     }
     let Razorpay;
@@ -215,11 +209,10 @@ export default function checkout(main) {
   const placeCod = async () => {
     const q = quote(plain, { paymentMethod: 'cod' });
     if (q.errors.length) return say('error', q.errors[0]);
-    const reference = `RUH-COD-${Date.now().toString(36).toUpperCase()}`;
+    const reference = `GC-COD-${Date.now().toString(36).toUpperCase()}`;
     const c = customer();
     const result = await send('cod-order', { ...c, reference, items: q.items.map((i) => `${i.name} (${i.size}) x${i.qty}`).join('; '), total: String(q.total) });
     if (result.ok) return complete({ reference, method: 'cod', items: q.items, total: q.total, delivery: q.delivery, email: c.email });
-    if (result.reason === 'local-preview' || result.reason === 'not-configured') return runDemo('Preview: cash-on-delivery orders are recorded through Netlify Forms on the live site.');
     say('error', 'We couldn’t place your order. Nothing has been charged — please try again.');
   };
 

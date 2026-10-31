@@ -1,4 +1,4 @@
-import { collections, products, upcoming } from '../../../site.config.js';
+import { site, collections, products, upcoming, statusLabels } from '../../../site.config.js';
 import { journal } from '../../../content/journal.js';
 
 export const getProduct = (handle) => products.find((p) => p.handle === handle) || null;
@@ -27,30 +27,49 @@ export const collectionItems = (handle) => ({
 
 export const defaultVariant = (p) => p.variants.find((v) => v.available) || p.variants[0];
 export const getVariant = (p, id) => p.variants.find((v) => v.id === id) || null;
-export const fromPrice = (p) => Math.min(...p.variants.map((v) => v.price));
+export const fromPrice = (p) => Math.min(...p.variants.map((v) => v.price).filter((n) => n > 0));
+
+/** A product can be bought only when the shop is open and its price is confirmed. */
+export const isPurchasable = (p) =>
+  !!(site.commerce.enabled && p?.available && p.variants.some((v) => v.available && v.price > 0));
+
+/** Customer-facing status for any item (null when it can be bought). */
+export const statusOf = (item) => {
+  if (item.variants) return isPurchasable(item) ? null : item.statusLabel || statusLabels['coming-soon'];
+  return statusLabels[item.status] || statusLabels['coming-soon'];
+};
+
+/** Every item in display order: products first, then the rest of the range. */
+export const allItems = (collection = null) =>
+  [
+    ...products.map((p) => ({ kind: 'product', item: p })),
+    ...upcoming.map((u) => ({ kind: 'upcoming', item: u })),
+  ].filter((x) => !collection || x.item.collection === collection);
+
+export const itemUrl = ({ kind, item }) => (kind === 'product' ? productUrl(item) : upcomingUrl(item));
 
 /** Flat search index across products, upcoming items, collections and journal. */
 export const searchIndex = () => [
   ...products.map((p) => ({
     type: 'Products',
     title: p.name,
-    sub: [p.scentName, p.scentDescriptor].filter(Boolean).join(' — '),
+    sub: [p.category, statusOf(p)].filter(Boolean).join(' · '),
     url: productUrl(p),
     image: p.images[0]?.key,
-    text: [p.name, p.scentName, p.scentDescriptor, p.shortDescription, p.family, ...Object.values(p.notes || {}).flat(), 'body mist fragrance scent perfume'].join(' '),
+    text: [p.name, p.category, p.tagline, p.shortDescription, p.scent?.name, p.scent?.family, ...Object.values(p.scent?.notes || {}).flat(), 'body mist fragrance scent spray'].join(' '),
   })),
   ...upcoming.map((u) => ({
     type: 'Coming soon',
     title: u.name,
-    sub: `Coming soon · ${getCollection(u.collection)?.name || ''}`,
+    sub: `${statusOf(u)} · ${getCollection(u.collection)?.name || ''}`,
     url: upcomingUrl(u),
     image: u.image,
-    text: [u.name, u.format, u.intro, u.theme, getCollection(u.collection)?.name, 'coming soon'].join(' '),
+    text: [u.name, u.format, u.line, getCollection(u.collection)?.name, 'coming soon'].join(' '),
   })),
   ...collections.map((c) => ({
     type: 'Collections',
     title: c.name,
-    sub: c.status === 'live' ? 'Collection' : 'Coming soon',
+    sub: 'Collection',
     url: collectionUrl(c),
     image: c.image,
     text: [c.name, c.headline, c.intro].join(' '),
@@ -63,7 +82,7 @@ export const searchIndex = () => [
     image: a.image,
     text: [a.title, a.dek, a.category, ...a.body.map((b) => b.p || b.h || b.quote || (b.list || []).join(' '))].join(' '),
   })),
-  { type: 'Pages', title: 'Our story', sub: 'Who we are and why', url: 'story.html', text: 'our story about brand name meaning philosophy' },
+  { type: 'Pages', title: 'Our story', sub: 'About Gentle Company', url: 'story.html', text: 'our story about gentle company brand' },
   { type: 'Pages', title: 'FAQs', sub: 'Questions and answers', url: 'faq.html', text: 'faq help questions delivery returns payment' },
   { type: 'Pages', title: 'Shipping & returns', sub: 'Delivery and returns', url: 'shipping-returns.html', text: 'shipping delivery returns refund cod' },
   { type: 'Pages', title: 'Contact', sub: 'Get in touch', url: 'contact.html', text: 'contact email help support' },

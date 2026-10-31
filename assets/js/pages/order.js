@@ -6,7 +6,7 @@ import { storage } from '../lib/storage.js';
 export default function order(main) {
   setTitle('Order confirmed');
   const ref = param('ref');
-  const o = storage.get('ruh.lastOrder.v1');
+  const o = storage.get('gc.lastOrder.v1');
   if (!o || o.reference !== ref) {
     main.innerHTML = `<section class="container empty-state">
       <h1 class="t-2xl">Order <em>details</em></h1>

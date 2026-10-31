@@ -37,17 +37,19 @@ WIDTHS = [480, 800, 1200, 1600, 2400]
 QUALITY = {"avif": 52, "webp": 78, "jpg": 82}
 
 ALT = {
-    "hero_wide": "Concept render: a frosted body mist bottle with a terracotta cap on a travertine block, lit through a carved jaali screen",
-    "hero_portrait": "Concept render: the body mist bottle on a travertine block in patterned sunlight",
-    "pack_front": "Concept render: Body Mist Nº 01 bottle, front view",
-    "pack_angle": "Concept render: Body Mist Nº 01 bottle at an angle",
-    "pack_open": "Concept render: the bottle with its cap removed",
-    "detail_label": "Concept render: close-up of the printed label in patterned light",
-    "detail_cap": "Concept render: the terracotta cap in jaali light",
-    "ritual_ledge": "Concept render: the bottle on a stone ledge beside folded linen",
-    "niche": "Concept render: the bottle in an arched limewash niche",
-    "wall_light": "Sunlight falling through a carved jaali screen onto a limewash wall",
-    "mist": "Concept render: a fine mist leaving the bottle in warm light",
+    "hero_wide": "Gentle Company Body Mist Nº 01 on a travertine block against warm apricot plaster, in leaf-dappled sunlight",
+    "hero_portrait": "Body Mist Nº 01 on a travertine block against apricot plaster, in leaf-dappled sunlight",
+    "pack_front": "Gentle Company Body Mist Nº 01: a clear glass bottle of apricot-coloured mist with a cocoa cap and a cream label",
+    "pack_angle": "Body Mist Nº 01 seen at an angle, showing the depth of the glass",
+    "pack_open": "Body Mist Nº 01 with its cap off, showing the spray",
+    "detail_label": "Close-up of the label: GENTLE COMPANY, Body Mist, Nº 01",
+    "mist": "A fine mist leaving the bottle in warm backlight",
+    "vanity": "Body Mist Nº 01 on a ceramic tray on a marble vanity, beside a folded towel",
+    "ritual": "Body Mist Nº 01 on a travertine bath ledge beside a folded linen towel",
+    "lineup": "The Gentle Company range on a long travertine shelf",
+    "family_body": "Gentle Company body care in apricot packaging",
+    "family_face": "Gentle Company face care in milk-white packaging",
+    "family_lip": "Gentle Company lip care in rose packaging",
 }
 
 
@@ -116,9 +118,9 @@ def main():
         encoding="utf-8",
     )
     renders = sorted(k for k, m in manifest.items() if m["kind"] == "render")
-    print(f"{len(manifest) - len(renders)} photo(s), {len(renders)} concept render(s) still in use" + (f": {', '.join(renders)}" if renders else ""))
+    print(f"{len(manifest) - len(renders)} photo(s), {len(renders)} rendered image(s) in use" + (f": {', '.join(renders)}" if renders else ""))
 
-    # social share image (1200x630) from the wide hero
+    # social share image (1200x630): the hero, with the outlined wordmark set on the calm left side
     hero = next((f for f in [*(PHOTO / f"hero_wide{e}" for e in PHOTO_EXT), SRC / "hero_wide.png"] if f.exists()), None)
     if hero and (not only or "hero_wide" in only):
         im = ImageOps.exif_transpose(Image.open(hero)).convert("RGB")
@@ -127,16 +129,14 @@ def main():
         scale = max(tw / w, th / h)
         r = im.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
         left = (r.width - tw) // 2
-        r.crop((left, 0, left + tw, th)).save(DST / "og-image.jpg", quality=84, optimize=True)
+        og = r.crop((left, 0, left + tw, th))
+        mark = ROOT / "assets" / "brand" / "og-wordmark.png"
+        if mark.exists():
+            wm = Image.open(mark).convert("RGBA")
+            og.paste(wm, (72, th - 72 - wm.height), wm)
+        og.save(DST / "og-image.jpg", quality=86, optimize=True)
 
-    # favicon: the eight-point star mark on terracotta
-    (DST / "favicon.svg").write_text(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-        '<rect width="32" height="32" rx="6" fill="#9a5540"/>'
-        '<path fill="#f6f1ea" transform="translate(6 6) scale(2)" d="M5 0l1.2 2.1L8.5 1.5 7.9 3.8 10 5 7.9 6.2l.6 2.3-2.3-.6L5 10 3.8 7.9l-2.3.6.6-2.3L0 5l2.1-1.2-.6-2.3 2.3.6z"/>'
-        "</svg>",
-        encoding="utf-8",
-    )
+    # favicon.svg is written by tools/build_brand.py
     print("manifest:", MANIFEST.relative_to(ROOT), len(manifest), "images")
 
 

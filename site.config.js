@@ -1,268 +1,171 @@
 /**
  * ============================================================================
- *  SITE CONFIGURATION — the single place to edit brand, product and content.
+ *  GENTLE COMPANY — SITE CONFIGURATION
+ *  Every brand, product, navigation and page value the website shows lives
+ *  here. Edit, save, refresh. See PRODUCT_CONFIGURATION.md for a guide.
+ *
+ *  THE RULE: anything set to null is simply not shown. The website never
+ *  displays a placeholder, a "to be confirmed" note or an example value.
+ *  Fill a field only with confirmed information, and it appears.
+ *  `node tools/launch_check.mjs` lists everything still missing.
  * ============================================================================
- *
- *  Everything the website displays comes from this file (plus long-form
- *  journal articles in content/journal.js). No build step is needed: edit,
- *  save, refresh.
- *
- *  PROVISIONAL CONTENT
- *  Values marked  // PROVISIONAL  are placeholders created for the design.
- *  They are NOT business facts. Replace them before launch, then set
- *  `previewMode: false`. While previewMode is true the site shows a small
- *  "Preview" badge and labels placeholder sections, so nobody mistakes them
- *  for final information. See PRODUCT_CONFIGURATION.md for the full list.
- *
- *  Never add claims (longevity, dermatologist-tested, clinical results,
- *  certifications, reviews, order counts) unless you hold evidence for them.
  */
 
 export const site = {
-  /**
-   * Preview mode shows the "Preview build" badge and labels placeholder
-   * content. Set to false only when `node tools/launch_check.mjs` passes.
-   * With previewMode false, anything still flagged provisional is hidden.
-   */
-  previewMode: true,
-
   // ---------------------------------------------------------------------------
-  // Company — the business that sells the products (seller / data fiduciary).
-  // Shown in the footer, product information, policies and structured data.
+  // The business. legalName/registeredAddress/gstin appear in the footer,
+  // policies, product information and structured data once set.
   // ---------------------------------------------------------------------------
   company: {
-    name: 'GentleCare',
-    legalName: null, // REQUIRED — registered name, e.g. 'GentleCare Private Limited'
-    registeredAddress: null, // REQUIRED — full registered office address
-    cin: null, // company identification number, if incorporated
-    gstin: null, // GST registration number
-    website: null, // e.g. 'https://www.your-domain.in' (used in policies and SEO)
+    name: 'Gentle Company',
+    legalName: null, // registered legal name, e.g. 'Gentle Company Private Limited'
+    registeredAddress: null, // full registered office address
+    cin: null,
+    gstin: null,
+    website: null, // e.g. 'https://www.gentlecompany.in' — enables sitemap.xml and canonical links
   },
 
-  // ---------------------------------------------------------------------------
-  // Brand — Rūh is a brand of the company above.
-  // ---------------------------------------------------------------------------
   brand: {
-    name: 'Rūh', // working brand name
-    trademarkCleared: false, // set true once the trademark search/filing is done
-    wordmark: 'RŪH', // text fallback when the SVG logo can't be used
-    logoSvg: 'assets/brand/ruh-wordmark.svg', // master logo file (also inlined in the header)
-    endorsement: 'A GentleCare brand', // shown in the footer and on Our Story
-    tagline: 'Scent and skin, in softer light.',
-    description:
-      'Rūh, a GentleCare brand, makes calm, sensory body and skin care rituals for everyday life — beginning with Body Mist Nº 01.',
-    nameMeaning:
-      'In Hindi and Urdu, rūh means soul. In the Indian attar tradition, a ruh is the purest distilled essence of a flower or root.',
-    foundedYear: null, // e.g. 2026 — not shown until set
+    name: 'Gentle Company',
+    wordmark: 'GENTLE COMPANY',
+    tagline: 'Body and skin care, gently made.',
+    description: 'Gentle Company makes body and skin care for India, beginning with Body Mist Nº 01.',
+    logoSvg: 'assets/brand/gentle-company-wordmark.svg',
+    trademarkCleared: false, // internal only (launch check)
   },
 
-  locale: {
-    lang: 'en-IN',
-    currency: 'INR',
-  },
+  locale: { lang: 'en-IN', currency: 'INR' },
 
-  // ---------------------------------------------------------------------------
-  // Announcement bar (rotates). Keep each under ~60 characters.
-  // ---------------------------------------------------------------------------
+  /** Announcement bar. Keep each under ~60 characters. Empty array hides it. */
   announcements: [
-    { text: 'Body Mist Nº 01 — our first ritual, now available', href: 'product.html?p=body-mist-no-01' },
-    { text: 'Join the list for early access to what comes next', href: 'index.html#early-access' },
-    { text: 'Secure checkout with UPI, cards and net banking', href: 'shipping-returns.html' },
+    { text: 'Body Mist Nº 01 — launching soon. Get first access', href: 'product.html?p=body-mist-no-01#notify' },
   ],
 
   // ---------------------------------------------------------------------------
-  // Customer care & social — null hides an item.
+  // Customer care. null hides an item.
   // ---------------------------------------------------------------------------
   contact: {
-    email: null, // REQUIRED — your business inbox, e.g. 'care@your-domain.in'
-    phone: null, // e.g. '+91 98xxxxxxxx'
-    whatsapp: null, // digits only, e.g. '9198xxxxxxxx' — shows a chat button when set
-    hours: 'Monday to Saturday, 10am – 6pm IST', // PROVISIONAL — confirm
-    responseTime: 'We reply within two working days.', // PROVISIONAL — confirm
-    /** Grievance officer (Consumer Protection (E-Commerce) Rules) — REQUIRED. */
-    grievanceOfficer: null, // { name: '…', designation: 'Grievance Officer', email: '…', phone: '…' }
+    email: null, // business inbox, e.g. 'care@gentlecompany.in'
+    phone: null,
+    whatsapp: null, // digits only, e.g. '9198xxxxxxxx' — adds a chat button
+    hours: null, // e.g. 'Monday to Saturday, 10am – 6pm IST'
+    grievanceOfficer: null, // { name, designation, email, phone } — required before selling
   },
 
-  social: {
-    instagram: null, // e.g. 'https://instagram.com/ruh.gentlecare'
-    handle: null, // e.g. '@ruh.gentlecare'
-    pinterest: null,
-    youtube: null,
-    linkedin: null,
-  },
+  social: { instagram: null, youtube: null, pinterest: null, linkedin: null },
 
   // ---------------------------------------------------------------------------
-  // Commerce. Prices are in rupees, inclusive of all taxes (MRP).
+  // Commerce. The shop opens when `enabled` is true AND a product is marked
+  // available with a confirmed price. Until then the website shows
+  // "Notify me" instead of a price or a bag — never a fake checkout.
+  // Payments: Razorpay via /api/create-order + /api/verify-payment (Vercel),
+  // with RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET set in Vercel. See README.
   // ---------------------------------------------------------------------------
   commerce: {
-    /**
-     * checkout.provider:
-     *  'razorpay' — live payments via Razorpay (UPI, cards, net banking, wallets).
-     *               Needs the site deployed on Netlify with RAZORPAY_KEY_ID and
-     *               RAZORPAY_KEY_SECRET set (see README → Payments). Until the
-     *               payment server is reachable, preview builds fall back to a
-     *               clearly labelled demo and never take money.
-     *  'demo'     — always the labelled demo
-     *  'shopify'  — send the bag to a Shopify cart permalink (set shopifyDomain + variant ids)
-     */
-    checkout: { provider: 'razorpay', shopifyDomain: null },
-    /** Shows "Buy now" on product pages (skips the bag, goes to checkout). */
+    enabled: false,
+    checkout: { provider: 'razorpay' },
     buyNowEnabled: true,
     maxQuantityPerItem: 6,
-    /** Short notes under Add to bag. `provisional` ones are hidden when previewMode is false. */
-    serviceNotes: [
-      { text: 'Secure payment: UPI, cards, net banking and wallets via Razorpay' },
-      { text: 'Delivery timelines shown at checkout', provisional: true },
-    ],
+    serviceNotes: [], // short lines under the purchase button, e.g. { text: 'Free delivery above ₹999' }
   },
 
-  /**
-   * Delivery charges (server-side and in the bag). All amounts in ₹.
-   * flatRate null = free delivery on every order (launch check will remind you).
-   */
+  /** Delivery charges, used by the bag, checkout and payment server. ₹, null = not set. */
   shipping: {
-    flatRate: null, // PROVISIONAL — e.g. 79
-    freeAbove: null, // PROVISIONAL — e.g. 999 (also drives the progress meter in the bag)
-    cod: { enabled: false, fee: 0, maxOrderValue: 3000 }, // cash on delivery via Netlify Forms
+    flatRate: null,
+    freeAbove: null,
+    cod: { enabled: false, fee: 0, maxOrderValue: 3000 },
     serviceableCountries: ['IN'],
   },
 
-  /** Footer service band. `provisional` items are marked in preview and hidden in production. */
-  servicePromises: [
-    { icon: 'lock', title: 'Secure checkout', text: 'UPI, cards, net banking and wallets, processed by Razorpay.' },
-    { icon: 'leaf', title: 'Full ingredient lists', text: 'Published for every product, in plain view.' },
-    { icon: 'truck', title: 'Across India', text: 'Delivery partners and timelines to be confirmed.', provisional: true },
-  ],
+  /** Footer service band. Only confirmed promises. */
+  servicePromises: [],
 
   // ---------------------------------------------------------------------------
-  // Forms (newsletter, waitlist / notify me, contact, cash-on-delivery orders).
-  // provider: 'netlify' | 'formspree' | 'custom' | 'none'
-  //  - netlify:   Netlify Forms (submissions in the Netlify dashboard + email
-  //               notifications). Form definitions live in netlify-forms.html.
-  //               On a local preview nothing is sent and the visitor is told so.
-  //  - formspree: POSTs JSON to `endpoint` (https://formspree.io/f/xxxx)
-  //  - custom:    POSTs JSON to `endpoint` (Klaviyo/Brevo/Mailchimp proxy, your API…)
-  //  - none:      validates, then says plainly that nothing was sent
-  // A success message is shown ONLY when the endpoint responds with 2xx.
+  // Forms: early access, notify me and contact. provider 'api' posts to this
+  // site's own /api/subscribe and /api/contact (Vercel functions → Brevo).
+  // A success message appears ONLY when the server confirms the email was
+  // stored or sent. See README → Email & forms.
   // ---------------------------------------------------------------------------
   forms: {
-    provider: 'netlify',
-    endpoint: null,
-    consentText: 'By joining, you agree to receive emails from Rūh by GentleCare. Unsubscribe anytime.',
+    provider: 'api',
+    endpoint: null, // only for provider 'custom' or 'formspree'
+    consentText: 'By signing up you agree to receive emails from Gentle Company. Unsubscribe anytime.',
   },
 
-  analytics: { enabled: false }, // add your analytics snippet in assets/js/app.js when ready
+  analytics: { enabled: false },
 };
 
 // =============================================================================
 //  CATALOGUE
 // =============================================================================
 
-/**
- * Collections group products and upcoming items. `status` controls display.
- * Images reference keys in assets/js/data/images.js (generated renders).
- */
+/** Lines (collections). `tone` sets the card background colour family. */
 export const collections = [
   {
     handle: 'body-care',
     name: 'Body Care',
-    nav: 'Shop',
-    status: 'live', // has at least one available product
-    eyebrow: 'Body care',
-    headline: 'Rituals for the body, one at a time.',
-    intro:
-      'Our body collection begins with Body Mist Nº 01. Washes, lotions, scrubs and butters are in development — each designed to sit alongside the first.', // PROVISIONAL
-    image: 'up_group_body',
-    imageAlt: 'Blank plaster forms of a pump bottle, tubes and jars standing in patterned window light — concept forms only',
+    short: 'Body',
+    tone: 'apricot',
+    headline: 'Body care',
+    intro: 'Mist, wash, lotion, scrub, butter and cream — one range for the body.',
+    image: 'family_body',
+    imageAlt: 'The Gentle Company body care range in apricot packaging: body mist, wash, lotion, scrub, butter and hand cream',
   },
   {
     handle: 'face-care',
     name: 'Face Care',
-    nav: 'Skincare',
-    status: 'coming-soon',
-    eyebrow: 'Skincare · Coming soon',
-    headline: 'Face care, considered from the first step.',
-    intro:
-      'A small, complete face routine is in development: cleanse, tone, treat, moisturise, protect. Join the list to hear first when it is ready.', // PROVISIONAL
-    image: 'up_group_face',
-    imageAlt: 'Blank plaster and frosted-glass forms of skincare bottles and jars in jaali light — concept forms only',
+    short: 'Face',
+    tone: 'milk',
+    headline: 'Face care',
+    intro: 'Cleanse, tone, treat, moisturise, protect.',
+    image: 'family_face',
+    imageAlt: 'The Gentle Company face care range in milk-white packaging: cleanser, toner, serum, moisturiser, sunscreen and mask',
   },
   {
     handle: 'lip-care',
     name: 'Lip Care',
-    nav: 'Skincare',
-    status: 'coming-soon',
-    eyebrow: 'Lip care · Coming soon',
-    headline: 'Small things, done beautifully.',
-    intro: 'A lip balm and a lip treatment are in development. Join the list to be first to know.', // PROVISIONAL
-    image: 'up_group_lip',
-    imageAlt: 'Blank forms of a lip balm and a small tube on a rose-washed ledge — concept forms only',
+    short: 'Lip',
+    tone: 'rose',
+    headline: 'Lip care',
+    intro: 'A balm and a treatment, in rose.',
+    image: 'family_lip',
+    imageAlt: 'Gentle Company lip balm and lip treatment in rose packaging',
   },
 ];
 
 /**
- * Products available to buy. Add another object to launch a product —
- * it appears in the shop, search, its collection and gets its own page at
- * product.html?p=<handle>.
+ * Products with their own product page. A product is purchasable only when
+ * site.commerce.enabled is true, `available` is true and its variant has a
+ * confirmed price. Every content field below is optional: null hides it.
  */
 export const products = [
   {
     handle: 'body-mist-no-01',
     collection: 'body-care',
-    available: true,
-    badge: 'New',
+    category: 'Body Mist',
     name: 'Body Mist Nº 01',
-    scentName: 'First Light', // PROVISIONAL
-    scentDescriptor: 'A luminous veil of citrus, white florals and soft woods', // PROVISIONAL
-    shortDescription:
-      'A light veil of scent for the hours between — after the shower, on the way out, whenever the day asks for a pause.', // PROVISIONAL
-    description: [
-      // PROVISIONAL — rewrite with the perfumer's final brief
-      'Body Mist Nº 01 is the first of our rituals: a body mist composed to feel bright at first touch and settle into something softer and warmer as it rests on skin.',
-      'A body mist is lighter than a perfume by design, so it is made to be returned to — misted after the shower, again before you step out, and whenever you want the day to feel a little slower.',
-    ],
-    /** Sizes. The size selector only appears when more than one is listed. */
-    variants: [
-      {
-        id: 'bm01-100',
-        size: '100 ml',
-        netQuantity: '100 ml',
-        price: 1295, // PROVISIONAL — MRP in ₹ incl. all taxes
-        compareAtPrice: null, // set only for a genuine, time-bound price reduction
-        sku: null,
-        shopifyVariantId: null,
-        available: true,
-      },
-    ],
-    family: 'Floral · Woody', // PROVISIONAL
-    mood: 'Bright, calm, clean-skinned', // PROVISIONAL
-    wearIt: ['After the shower', 'Before stepping out', 'A pause in the afternoon', 'Travel and gifting'], // PROVISIONAL
-    notes: {
-      // PROVISIONAL placeholders — replace with the perfumer's actual notes
-      top: ['Bergamot', 'Pink grapefruit'],
-      heart: ['Jasmine sambac', 'Orange blossom'],
-      base: ['Sandalwood', 'Soft musk'],
+    available: false, // set true at launch (with a price below)
+    badge: 'First release',
+    statusLabel: 'Launching soon',
+    tagline: 'The first from Gentle Company.',
+    shortDescription: 'A light, all-over mist for the body — the first release from Gentle Company.',
+    /** Sizes. Fill size and price (₹ MRP incl. taxes) only when final. */
+    variants: [{ id: 'bm01', size: null, price: null, compareAtPrice: null, sku: null, available: false }],
+    /** Scent profile — shown only once the perfumer's brief is final. */
+    scent: {
+      name: null, // e.g. 'First Light'
+      family: null, // e.g. 'Floral · Woody'
+      mood: null, // three words, e.g. 'Bright · Soft · Warm'
+      notes: null, // { top: ['…'], heart: ['…'], base: ['…'] }
     },
-    benefits: [
-      // PROVISIONAL — keep to what you can substantiate
-      { title: 'A light, airy veil', text: 'Composed as a body mist — lighter than a perfume, made for re-application through the day.' },
-      { title: 'Made to layer', text: 'Designed to sit alongside the body care that follows it.' },
-      { title: 'An object to keep', text: 'A frosted bottle with a terracotta cap, made to be left out in the light.' },
-    ],
-    howToUse: [
-      // PROVISIONAL — confirm with the formulator
-      'Hold the bottle about 15–20 cm from the body.',
-      'Mist over moisturised skin — the décolleté, arms and pulse points.',
-      'Return to it through the day whenever you want to.',
-      'For external use only. Avoid eyes and broken or irritated skin.',
-    ],
-    ingredients: null, // PROVISIONAL — paste the final INCI list (string) from the approved formulation
-    ingredientsNote:
-      'This ingredient list is subject to change. Always refer to the product label for the most accurate information.',
+    highlights: null, // [{ title, text }] — only statements you can substantiate
+    description: null, // ['paragraph', …] — longer copy for the Details section
+    howToUse: null, // ['step', …] — as printed on the label
+    ingredients: null, // full INCI list (string) from the approved formulation
+    /** Legal Metrology declarations — rows with null are hidden. */
     productInformation: {
-      // Legal Metrology declarations — all required before launch
-      'Net quantity': '100 ml', // PROVISIONAL
-      'MRP': 'Inclusive of all taxes',
+      'Net quantity': null,
+      'MRP': null,
       'Manufactured by': null,
       'Marketed by': null,
       'Country of origin': null,
@@ -270,71 +173,66 @@ export const products = [
       'Customer care': null,
     },
     images: [
-      { key: 'pack_front', alt: 'Body Mist Nº 01 concept bottle — frosted glass with a terracotta cap, front view' },
-      { key: 'hero_portrait', alt: 'The concept bottle on a travertine block, lit by sunlight through a jaali screen' },
-      { key: 'pack_angle', alt: 'The concept bottle at an angle on a warm backdrop' },
-      { key: 'detail_label', alt: 'Close-up of the printed label in patterned light' },
-      { key: 'pack_open', alt: 'The concept bottle with its cap removed, showing the spray actuator' },
-      { key: 'mist', alt: 'Fine mist leaving the concept bottle in warm window light' },
+      { key: 'pack_front', alt: 'Gentle Company Body Mist Nº 01: a clear glass bottle of apricot-coloured mist with a cocoa cap and a cream label' },
+      { key: 'hero_portrait', alt: 'Body Mist Nº 01 on a travertine block against apricot plaster, in leaf-dappled sunlight' },
+      { key: 'pack_angle', alt: 'Body Mist Nº 01 seen at an angle, showing the depth of the glass' },
+      { key: 'detail_label', alt: 'Close-up of the label: GENTLE COMPANY, Body Mist, Nº 01' },
+      { key: 'pack_open', alt: 'Body Mist Nº 01 with its cap off, showing the spray' },
+      { key: 'vanity', alt: 'Body Mist Nº 01 on a ceramic tray on a marble vanity, beside a folded towel' },
+      { key: 'mist', alt: 'A fine mist leaving the bottle in warm backlight' },
     ],
-    imageDisclaimer: 'Concept render — final packaging may differ.', // remove once real photography exists
+    /** Short customer-facing note on imagery (shown in Details). */
+    packagingNote: 'Images show Gentle Company’s packaging design ahead of launch.',
+    /** Moments — lifestyle images with one-line captions (no product claims). */
+    moments: [
+      { title: 'At the vanity', image: 'vanity' },
+      { title: 'A fine mist', image: 'mist' },
+      { title: 'The label', image: 'detail_label' },
+      { title: 'Ready to wear', image: 'pack_open' },
+    ],
     faqs: [
       {
-        q: 'How long does the scent last on skin?',
-        a: 'We will publish results from our own wear tests before making any claim. As a rule, body mists are lighter than perfumes — they typically contain around 1–5% fragrance oil, compared with roughly 15–20% for an eau de parfum — so Nº 01 is made to be re-applied through the day.',
+        q: 'What is a body mist?',
+        a: 'A body mist is a light fragrance made to be sprayed all over the body. Body mists typically contain less fragrance oil than a perfume, so they feel lighter and are made to be reapplied through the day.',
       },
       {
-        q: 'Can I use it on sensitive skin?',
-        a: 'Safety and skin-compatibility information will be added here once testing is complete. Until then, please check the full ingredient list and patch test on a small area first. For external use only.', // PROVISIONAL
-      },
-      {
-        q: 'Is it a perfume?',
-        a: 'No. It is a body mist: lighter, airier and made for frequent use. Think of it as a veil rather than a statement.',
-      },
-      {
-        q: 'Is it suitable for gifting?',
-        a: 'Yes — gift packaging and gift-message options will be confirmed before launch.', // PROVISIONAL
+        q: 'When can I buy it?',
+        a: 'Body Mist Nº 01 is launching soon. Leave your email on this page and we will write to you as soon as it is available.',
       },
     ],
     pairsWith: ['body-lotion', 'body-butter', 'hand-body-cream'],
-    /** Customer reviews. Only add real, verifiable reviews (or connect a reviews app). */
-    reviews: [],
-    provisional: {
-      name: false,
-      scent: true,
-      price: true,
-      description: true,
-      notes: true,
-      benefits: true,
-      howToUse: true,
-      ingredients: true,
-      information: true,
-    },
+    reviews: [], // only genuine, verifiable reviews
   },
 ];
 
 /**
- * Upcoming products — visible and discoverable, never purchasable.
- * `eta` stays null until a date is real.
+ * The rest of the range — shown with a status label, never purchasable.
+ * `status`: 'coming-soon' | 'in-development'. `eta` stays null until real.
  */
 export const upcoming = [
   // Body care
-  { handle: 'body-wash', collection: 'body-care', name: 'Body Wash', format: 'Pump bottle', image: 'up_body_wash', intro: 'A daily wash for the body, designed to begin the ritual that Nº 01 completes.', eta: null },
-  { handle: 'body-lotion', collection: 'body-care', name: 'Body Lotion', format: 'Tube', image: 'up_body_lotion', intro: 'An everyday lotion to wear beneath your mist.', eta: null },
-  { handle: 'body-scrub', collection: 'body-care', name: 'Body Scrub', format: 'Jar', image: 'up_body_scrub', intro: 'A weekly ritual for smoother-feeling skin.', eta: null },
-  { handle: 'body-butter', collection: 'body-care', name: 'Body Butter', format: 'Jar', image: 'up_body_butter', intro: 'A richer layer for evenings and drier days.', eta: null },
-  { handle: 'hand-body-cream', collection: 'body-care', name: 'Hand & Body Cream', format: 'Tube', image: 'up_hand_cream', intro: 'A small cream for bags, desks and bedside tables.', eta: null },
+  { handle: 'body-wash', collection: 'body-care', name: 'Body Wash', format: 'Pump bottle', image: 'up_body_wash', line: 'For the shower.', status: 'in-development', eta: null },
+  { handle: 'body-lotion', collection: 'body-care', name: 'Body Lotion', format: 'Tube', image: 'up_body_lotion', line: 'An everyday lotion.', status: 'in-development', eta: null },
+  { handle: 'body-scrub', collection: 'body-care', name: 'Body Scrub', format: 'Jar', image: 'up_body_scrub', line: 'A weekly ritual.', status: 'in-development', eta: null },
+  { handle: 'body-butter', collection: 'body-care', name: 'Body Butter', format: 'Jar', image: 'up_body_butter', line: 'A richer layer.', status: 'in-development', eta: null },
+  { handle: 'hand-body-cream', collection: 'body-care', name: 'Hand & Body Cream', format: 'Tube', image: 'up_hand_cream', line: 'For the bag and the bedside.', status: 'in-development', eta: null },
   // Face care
-  { handle: 'face-cleanser', collection: 'face-care', name: 'Face Cleanser', format: 'Pump bottle', image: 'up_cleanser', intro: 'The first step of a calm face routine.', eta: null, theme: 'Cleansing' },
-  { handle: 'toner', collection: 'face-care', name: 'Toner', format: 'Bottle', image: 'up_toner', intro: 'A light second step after cleansing.', eta: null },
-  { handle: 'face-serum', collection: 'face-care', name: 'Face Serum', format: 'Dropper', image: 'up_serum', intro: 'A focused treatment step — details when the formula is final.', eta: null },
-  { handle: 'moisturiser', collection: 'face-care', name: 'Moisturiser', format: 'Jar', image: 'up_moisturiser', intro: 'A daily moisturiser to close the routine.', eta: null, theme: 'Hydration' },
-  { handle: 'sunscreen', collection: 'face-care', name: 'Sunscreen', format: 'Tube', image: 'up_sunscreen', intro: 'Everyday sun protection — SPF and PA ratings will be published only once tested.', eta: null, theme: 'Sun protection' },
-  { handle: 'face-masks', collection: 'face-care', name: 'Face Masks', format: 'Jar', image: 'up_mask', intro: 'An occasional, slower ritual for the face.', eta: null },
+  { handle: 'face-cleanser', collection: 'face-care', name: 'Cleanser', format: 'Pump bottle', image: 'up_cleanser', line: 'The first step.', status: 'in-development', eta: null },
+  { handle: 'toner', collection: 'face-care', name: 'Toner', format: 'Bottle', image: 'up_toner', line: 'After cleansing.', status: 'in-development', eta: null },
+  { handle: 'face-serum', collection: 'face-care', name: 'Serum', format: 'Dropper', image: 'up_serum', line: 'A focused step.', status: 'in-development', eta: null },
+  { handle: 'moisturiser', collection: 'face-care', name: 'Moisturiser', format: 'Jar', image: 'up_moisturiser', line: 'To close the routine.', status: 'in-development', eta: null },
+  { handle: 'sunscreen', collection: 'face-care', name: 'Sunscreen', format: 'Tube', image: 'up_sunscreen', line: 'For every day.', status: 'in-development', eta: null },
+  { handle: 'face-masks', collection: 'face-care', name: 'Face Mask', format: 'Jar', image: 'up_mask', line: 'A slower moment.', status: 'in-development', eta: null },
   // Lip care
-  { handle: 'lip-balm', collection: 'lip-care', name: 'Lip Balm', format: 'Stick', image: 'up_lip_balm', intro: 'A daily balm for the bag and the bedside.', eta: null },
-  { handle: 'lip-treatment', collection: 'lip-care', name: 'Lip Treatment', format: 'Tube', image: 'up_lip_treatment', intro: 'A more nourishing treatment for lips.', eta: null },
+  { handle: 'lip-balm', collection: 'lip-care', name: 'Lip Balm', format: 'Stick', image: 'up_lip_balm', line: 'Daily, in rose.', status: 'in-development', eta: null },
+  { handle: 'lip-treatment', collection: 'lip-care', name: 'Lip Treatment', format: 'Tube', image: 'up_lip_treatment', line: 'A richer care.', status: 'in-development', eta: null },
 ];
+
+/** Customer-facing status labels. */
+export const statusLabels = {
+  'coming-soon': 'Coming soon',
+  'in-development': 'In development',
+};
 
 // =============================================================================
 //  NAVIGATION
@@ -342,31 +240,11 @@ export const upcoming = [
 
 export const navigation = {
   primary: [
-    {
-      label: 'Shop',
-      href: 'shop.html',
-      mega: {
-        columns: [
-          { title: 'Body care', collection: 'body-care', items: ['body-mist-no-01', 'body-wash', 'body-lotion', 'body-scrub', 'body-butter', 'hand-body-cream'] },
-        ],
-        feature: { product: 'body-mist-no-01', image: 'pack_angle' },
-        tile: { label: 'Explore what comes next', href: 'collection.html?c=body-care', image: 'up_group_body' },
-      },
-    },
-    {
-      label: 'Skincare',
-      href: 'collection.html?c=face-care',
-      mega: {
-        columns: [
-          { title: 'Face care', collection: 'face-care', items: ['face-cleanser', 'toner', 'face-serum', 'moisturiser', 'sunscreen', 'face-masks'] },
-          { title: 'Lip care', collection: 'lip-care', items: ['lip-balm', 'lip-treatment'] },
-        ],
-        tile: { label: 'Skincare is coming — join the list', href: 'collection.html?c=face-care#waitlist', image: 'up_group_face' },
-      },
-    },
+    { label: 'Shop', href: 'shop.html', mega: 'all' },
+    { label: 'Body', href: 'collection.html?c=body-care', mega: 'body-care' },
+    { label: 'Face', href: 'collection.html?c=face-care', mega: 'face-care' },
+    { label: 'Lip', href: 'collection.html?c=lip-care', mega: 'lip-care' },
     { label: 'Our Story', href: 'story.html' },
-    { label: 'Journal', href: 'journal.html' },
-    { label: 'Contact', href: 'contact.html' },
   ],
   footer: [
     {
@@ -385,19 +263,13 @@ export const navigation = {
         { label: 'Our story', href: 'story.html' },
         { label: 'Journal', href: 'journal.html' },
         { label: 'Contact', href: 'contact.html' },
-      ],
-    },
-    {
-      title: 'Help',
-      links: [
         { label: 'FAQs', href: 'faq.html' },
-        { label: 'Shipping & returns', href: 'shipping-returns.html' },
-        { label: 'Account', href: 'account.html' },
       ],
     },
     {
-      title: 'Legal',
+      title: 'Policies',
       links: [
+        { label: 'Shipping & returns', href: 'shipping-returns.html' },
         { label: 'Privacy policy', href: 'privacy.html' },
         { label: 'Terms & conditions', href: 'terms.html' },
       ],
@@ -406,170 +278,71 @@ export const navigation = {
 };
 
 // =============================================================================
-//  PAGE CONTENT
+//  PAGE CONTENT — short by design: images lead, words support.
 // =============================================================================
 
 export const content = {
   home: {
     hero: {
-      eyebrow: 'Body Mist Nº 01 · First Light',
-      title: 'A softer light, *worn on skin.*', // *…* renders in italic
-      text: 'Our first ritual is a body mist — a light veil of scent for after the shower, on the way out, and whenever the day asks for a pause.',
-      primary: { label: 'Shop Body Mist', href: 'product.html?p=body-mist-no-01' },
-      secondary: { label: 'Discover our world', href: 'story.html' },
+      eyebrow: 'Body Mist Nº 01',
+      title: 'Gentle, from the *first mist.*',
+      text: 'The first release from Gentle Company. Launching soon.',
+      primary: { label: 'Explore the mist', href: 'product.html?p=body-mist-no-01' },
+      secondary: { label: 'Get launch updates', href: '#early-access' },
       image: 'hero_wide',
       imageMobile: 'hero_portrait',
-      imageAlt: 'A frosted body mist bottle with a terracotta cap on a travertine block, in warm sunlight falling through a carved jaali screen',
+      imageAlt: 'Gentle Company Body Mist Nº 01 on a travertine block against warm apricot plaster, in leaf-dappled sunlight',
     },
+    shelf: { title: 'The collection', link: { label: 'Shop all', href: 'shop.html' } },
+    categories: { title: 'Shop by category' },
     intro: {
-      eyebrow: 'The house',
-      // [img:key] inserts a small inline image pill
-      statement:
-        'We make body and skin care for the [img:detail_label] unhurried moments — composed with restraint, lit by [img:wall_light] Indian light, and meant to be returned to.',
-      text: 'One product at a time, each one complete. Full ingredient lists in plain view. One honest price.', // PROVISIONAL commitments
-      link: { label: 'Read our story', href: 'story.html' },
+      title: 'Care, *made gently.*',
+      lines: ['Body and skin care for India.', 'One considered range, starting with a mist.'],
+      image: 'ritual',
+      imageAlt: 'Body Mist Nº 01 on a travertine bath ledge beside a folded linen towel, in leaf-dappled light',
+      link: { label: 'Our story', href: 'story.html' },
     },
-    featured: {
-      eyebrow: 'The first ritual',
-      title: 'Body Mist Nº 01',
-    },
-    scent: {
-      eyebrow: 'The composition',
-      title: 'How *First Light* unfolds',
-      text: 'Every fragrance moves through three stages. The first impression is bright and brief; the heart is the character; the trail is what stays closest to skin.',
-      image: 'mist',
-      imageAlt: 'A fine mist leaving the bottle in warm, patterned light',
-    },
-    ritual: {
-      eyebrow: 'The ritual',
-      title: 'Four moments, *one bottle.*',
-      steps: [
-        // PROVISIONAL usage guidance — confirm with the formulator
-        { title: 'After the shower', text: 'Begin on clean, moisturised skin, when the day is still quiet.', image: 'ritual_ledge' },
-        { title: 'At the pulse points', text: 'Mist over the décolleté, wrists and the inside of the elbows.', image: 'detail_cap' },
-        { title: 'Layered', text: 'Wear it over body care that follows the same calm — our lotions are on their way.', image: 'up_body_lotion' },
-        { title: 'Returned to', text: 'A body mist is light by design. Keep it close, and return to it through the day.', image: 'niche' },
-      ],
-    },
+    experience: { eyebrow: 'Body Mist Nº 01', title: 'Made for the *everyday ritual.*' },
     future: {
-      eyebrow: 'What comes next',
-      title: 'A complete ritual, *in the making.*',
-      text: 'Body Mist Nº 01 is the beginning. These are the categories we are developing — none are available yet, and we will only share details once they are final.',
-      tiles: [
-        { label: 'Body care', note: '5 in development', href: 'collection.html?c=body-care', image: 'up_group_body' },
-        { label: 'Face care', note: '6 in development', href: 'collection.html?c=face-care', image: 'up_group_face' },
-        { label: 'Hydration', note: 'Moisturiser', href: 'collection.html?c=face-care#moisturiser', image: 'up_moisturiser' },
-        { label: 'Cleansing', note: 'Cleanser & toner', href: 'collection.html?c=face-care#face-cleanser', image: 'up_cleanser' },
-        { label: 'Sun protection', note: 'Sunscreen', href: 'collection.html?c=face-care#sunscreen', image: 'up_sunscreen' },
-        { label: 'Lip care', note: 'Balm & treatment', href: 'collection.html?c=lip-care', image: 'up_group_lip' },
-      ],
-    },
-    philosophy: {
-      eyebrow: 'What we believe',
-      title: 'Quiet luxury, *honestly made.*',
-      image: 'niche',
-      imageAlt: 'The bottle standing in an arched limewash niche, lit through a jaali screen',
-      pillars: [
-        // PROVISIONAL — confirm each commitment before launch
-        { title: 'Ritual over routine', text: 'Small, sensory moments rather than ten-step regimes.' },
-        { title: 'Fewer, better things', text: 'We launch one product at a time, and only when it is ready.' },
-        { title: 'Candour', text: 'Full ingredient lists, plain-language facts, and no claims we cannot prove.' },
-        { title: 'One honest price', text: 'No inflated MRPs and no permanent "sales" — the price is the price.' },
-      ],
+      title: 'What comes next',
+      text: 'The range in development. Tap a product to see where it stands.',
+      image: 'lineup',
+      imageAlt: 'The Gentle Company range on a long travertine shelf: body care in apricot, face care in milk white, lip care in rose',
     },
     earlyAccess: {
-      eyebrow: 'Early access',
-      title: 'Be the first to discover *what comes next.*',
-      text: 'Join the list for launch news, early access to new rituals, and the occasional letter from the studio.',
-      interests: ['Body care', 'Face care', 'Lip care'],
-      image: 'wall_light',
-    },
-    social: {
-      eyebrow: 'In the light',
-      title: 'Seen in softer light',
-      images: ['hero_portrait', 'detail_label', 'ritual_ledge', 'pack_angle', 'niche', 'up_group_lip'],
+      title: 'Be first to know.',
+      text: 'Launch news and early access. Nothing else.',
+      interests: ['Body Mist', 'Body care', 'Face care', 'Lip care'],
+      image: 'pack_angle',
     },
   },
 
   story: {
     hero: {
-      eyebrow: 'Our story',
-      title: 'Care, as a *quiet ritual.*',
-      text: 'Rūh began with a simple idea: that the most ordinary moments of care — after a shower, before stepping out — deserve beauty, calm and honesty.', // PROVISIONAL
-      image: 'niche',
+      title: 'Gentle, *by name.*',
+      text: 'Gentle Company makes body and skin care for India — calm to use, honest to read, beautiful to keep.',
+      image: 'lineup',
     },
     chapters: [
-      {
-        eyebrow: 'The name',
-        title: 'Rūh — *the essence.*',
-        text: [
-          'In Hindi and Urdu, rūh means soul. In the attar workshops of Kannauj, a ruh is the purest distillation of a flower or root — ruh gulab, ruh khus.',
-          'We chose it because we want every product to feel like the essence of a moment, not an addition to a routine.', // PROVISIONAL
-        ],
-        image: 'detail_label',
-      },
-      {
-        eyebrow: 'Light as a material',
-        title: 'Made in *Indian light.*',
-        text: [
-          'Our world is drawn from the architecture of light: the carved jaali screens of old havelis and stepwells, which turn hard sun into soft, patterned shade.',
-          'It is a reminder of what we want our products to do — take the edge off the day, and leave something beautiful in its place.',
-        ],
-        image: 'wall_light',
-      },
-      {
-        eyebrow: 'How we work',
-        title: 'Fewer, *better things.*',
-        text: [
-          'We are launching with a single body mist, and growing slowly into body, face and lip care. Each product will arrive with its full ingredient list, clear instructions and no claims we cannot stand behind.', // PROVISIONAL
-        ],
-        image: 'up_group_body',
-      },
+      { title: 'One range, one look', text: 'Every product shares one design: clear labels, cocoa caps and a colour for each line — apricot for body, milk for face, rose for lip.', image: 'family_body' },
+      { title: 'Information in plain view', text: 'Each product page will list its full ingredients and label details. We publish what is confirmed, and nothing that isn’t.', image: 'detail_label' },
+      { title: 'Starting with a mist', text: 'Our first release is Body Mist Nº 01. The rest of the range follows, one product at a time.', image: 'vanity' },
     ],
-    company: {
-      eyebrow: 'The company',
-      title: 'Made by *GentleCare.*',
-      text: [
-        'Rūh is a brand of GentleCare. The name is the standard we hold ourselves to: care that is gentle on skin, honest in what it says, and considered in how it is made.', // PROVISIONAL — confirm company wording
-        'GentleCare will grow Rūh one ritual at a time — body first, then face and lip — with every formula, ingredient list and price published in plain view.', // PROVISIONAL
-      ],
-      image: 'pack_angle',
-    },
-    founderNote: {
-      eyebrow: "A note from the founders",
-      text: null, // PROVISIONAL — add the founders' own words here; hidden until set (a placeholder shows in preview mode)
-      signature: null,
-    },
   },
 
-  /** Site-wide FAQs (faq.html). Product FAQs live on the product. */
   faqs: [
     {
       group: 'Our products',
       items: [
-        { q: 'What is available right now?', a: 'Body Mist Nº 01 is our first product. Body, face and lip care are in development — you can join the list on each category page to hear first.' },
-        { q: 'Where are your products made?', a: 'Manufacturing details will be published here and on each product page before launch.' }, // PROVISIONAL
-        { q: 'Are your products tested on animals?', a: 'We will only state our testing and certification status once it is formally verified.' }, // PROVISIONAL
-        { q: 'Where can I find the ingredients?', a: 'Every product page includes the full ingredient list (INCI) from the final formulation.' },
+        { q: 'What can I buy right now?', a: 'Body Mist Nº 01 is our first product and is launching soon. Body, face and lip care are in development. Leave your email on any product or category page to hear first.' },
+        { q: 'Where can I find the ingredients?', a: 'Each product page will list the full ingredients (INCI) from the final formulation, alongside the label information.' },
       ],
     },
     {
-      group: 'Orders & delivery',
+      group: 'Orders',
       items: [
-        { q: 'Where do you deliver?', a: 'Across India, to serviceable PIN codes. Dispatch and delivery times are on our Shipping & Returns page.' },
-        { q: 'Which payment methods do you accept?', a: 'UPI, credit and debit cards, net banking and wallets, processed securely by Razorpay. We never see or store your card or bank details.' },
-        { q: 'Can I cancel my order?', a: 'Yes — any time before it is dispatched. Write to us with your order reference and we refund the full amount to your original payment method.' },
-        { q: 'Will someone call me to confirm payment?', a: 'We will never call or message you asking for a payment, OTP or card details outside our website. If this happens, please do not share any information and contact us.' },
-      ],
-    },
-    {
-      group: 'Returns',
-      items: [
-        { q: 'Can I return a product?', a: 'Because these are personal-care products, we accept returns for items that arrive damaged, leaking, defective, incorrect or past their best-before date. Report the problem with photos within 48 hours of delivery and we will replace or refund it. Full details are on the Shipping & Returns page.' }, // PROVISIONAL — confirm window and change-of-mind policy
-        { q: 'I have a complaint. Who do I contact?', a: 'Write to customer care first. If you are not satisfied, our Grievance Officer acknowledges complaints within 48 hours and aims to resolve them within one month — contact details are on the Contact page.' },
+        { q: 'Will anyone call me about a payment?', a: 'No. We will never call or message you asking for a payment, an OTP or card details. If this happens, please do not share any information.' },
       ],
     },
   ],
-
-  // Policy pages (shipping, privacy, terms) live in content/policies.js.
 };
