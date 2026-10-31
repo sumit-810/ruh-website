@@ -133,7 +133,47 @@ The site follows a "75% visual, 25% words" principle. The details are in [`GENTL
 
 ## 7. Testing
 
-See §7 of the final summary below. It is filled in after the full QA run.
+Every suite was run against the locally served site with all final images in place. The local server was a Python static server; checks that rely on cloud services used the mocks noted below.
+
+| Suite | Result | Covers |
+|---|---|---|
+| `qa/interactions.mjs` | **49/49** | See the breakdown below this table |
+| `qa/functions.test.mjs` (`node --test`) | **14/14** | The shipped product (no price) can't be ordered; price tampering is ignored; signature verification; Brevo subscribe and contact (stores and sends only with keys; validates input; reports Brevo errors as failures) |
+| `qa/checkout.mjs` | **12/12** | Razorpay flow end to end against the real server code, with the gateway mocked: charged amount equals the total shown and comes from the catalogue; a forged signature is rejected; with no server, the customer is told nothing was charged |
+| `qa/smoke.mjs` | **0 issues** | 20 pages × 1440 / 820 / 390 px: no console errors, failed requests, broken images or horizontal overflow |
+| `qa/single-file.mjs` | **27/27** | The `dist/gentle-company.html` single-file build, opened from disk |
+| `qa/brand-audit.mjs` | **Clean** | 20 pages: visible text, titles, meta tags, alt text, ARIA labels and JSON-LD contain no retired brand name or placeholder language; all 63 published text files (HTML, JS, CSS, SVG) contain no retired name; the 349-file build holds only the new images |
+| `qa/perf.mjs` | **Passed** | First load 136–204 KB per page; LCP 136–240 ms; CLS 0.000 (local, unthrottled) |
+
+**What the interactions suite checks:**
+- The first screen shows the hero image and the wordmark, with short copy.
+- The mega menu shows products as images.
+- Collection tabs, the hover image, quick view, the moments switcher and the hotspots all work.
+- Forms never fake success, and confirm only on a server 2xx.
+- All links on the homepage resolve.
+- The product page shows no unconfirmed price or sections.
+- The gallery's thumbnails, arrows and zoom work.
+- Shop filters sync to the URL, and search works.
+- The checkout is closed while the shop is closed, and the contact form fails honestly.
+- axe-core finds no WCAG A/AA violations on six templates.
+- **Shop open** (the config overridden in the browser only): price, bag, add to bag and checkout all work.
+- Mobile: the hero image appears immediately, the shelf swipes, the menu opens and closes, there is no overflow, and the sticky bar appears.
+
+**Visual inspection:**
+- Every page was reviewed at desktop (1440 px), tablet (820 px) and mobile (390 px).
+- Every rendered image was reviewed at full resolution.
+
+**Problems found and fixed during QA:**
+- **The studio backdrop curved up in front of the products,** so studio products sat partly sunk into it (about 40% of the bottle's height in the packshots). All 20 studio images were re-rendered.
+- **Glass shadows darkened the bottle's base.** Without caustics, the glass cast an opaque shadow that the bottle's base then refracted as a dark band. The bottle now passes light.
+- **Wide jars overflowed their frames,** and the label was too large on close-ups.
+- **The mist shot** was overexposed and cropped.
+- **The mobile layout overflowed** because of the desktop mega panels.
+- **Accessibility:** the moments list used invalid ARIA, and the chips on the dark panel had too little contrast.
+- **The contact form** required fields it shouldn't have.
+- **The early-access panel collapsed on mobile.**
+- **The homepage repeated an image** in adjacent sections.
+- **A FAQ question** contained a phrase that read as placeholder language.
 
 ## 8. Business information still required
 

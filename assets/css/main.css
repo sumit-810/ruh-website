@@ -731,3 +731,8 @@ body.has-sticky-bar .support-fab { bottom: calc(92px + env(safe-area-inset-botto
 .center { text-align: center; }
 .mt-0 { margin-top: 0; }
 .stack { display: grid; gap: var(--s-4); }
+@media (min-width: 760px) and (max-width: 1099px) {
+  .cat-tile__label { left: 10px; right: 10px; bottom: 10px; padding: 10px 12px; }
+  .cat-tile__label strong { font-size: 1.15rem; }
+  .cat-tile__label small { display: none; }
+}
