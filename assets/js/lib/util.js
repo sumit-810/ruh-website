@@ -133,6 +133,7 @@ export const icon = {
   arrowLeft: svg('<path d="M20 12H5M10 6l-6 6 6 6"/>'),
   chev: '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2 4.5 6 8l4-3.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  expand: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
   minus: svg('<path d="M5 12h14"/>'),
   gift: svg('<rect x="3.5" y="8.5" width="17" height="12"/><path d="M3.5 12.5h17M12 8.5v12M12 8.5c-1.5-3-5-4-5.5-2S9 8.5 12 8.5zm0 0c1.5-3 5-4 5.5-2S15 8.5 12 8.5z"/>'),
   truck: svg('<path d="M2.5 6.5h11v10h-11zM13.5 10h4l3 3.5v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'),

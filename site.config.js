@@ -298,8 +298,8 @@ export const content = {
     intro: {
       title: 'Care, *made gently.*',
       lines: ['Body and skin care for India.', 'One considered range, starting with a mist.'],
-      image: 'ritual',
-      imageAlt: 'Body Mist Nº 01 on a travertine bath ledge beside a folded linen towel, in leaf-dappled light',
+      image: 'intro_still',
+      imageAlt: 'A jar of Gentle Company Body Butter on folded linen and travertine, in soft window light',
       link: { label: 'Our story', href: 'story.html' },
     },
     experience: { eyebrow: 'Body Mist Nº 01', title: 'Made for the *everyday ritual.*' },
@@ -313,7 +313,7 @@ export const content = {
       title: 'Be first to know.',
       text: 'Launch news and early access. Nothing else.',
       interests: ['Body Mist', 'Body care', 'Face care', 'Lip care'],
-      image: 'pack_angle',
+      image: 'trio_still', // one piece from each line: body lotion, moisturiser, lip balm
     },
   },
 

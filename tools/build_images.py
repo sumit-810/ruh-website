@@ -50,6 +50,8 @@ ALT = {
     "family_body": "Gentle Company body care in apricot packaging",
     "family_face": "Gentle Company face care in milk-white packaging",
     "family_lip": "Gentle Company lip care in rose packaging",
+    "intro_still": "A jar of Gentle Company Body Butter on folded linen and travertine, in soft window light",
+    "trio_still": "Gentle Company Body Lotion, Moisturiser and Lip Balm on travertine against clay plaster",
 }
 
 

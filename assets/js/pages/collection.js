@@ -2,6 +2,7 @@ import { esc, param, setTitle, setMeta } from '../lib/util.js';
 import { picture } from '../lib/images.js';
 import { getCollection, allItems, isPurchasable } from '../lib/catalog.js';
 import { card } from '../components/cards.js';
+import { motionToggle } from '../lib/motion.js';
 import { waitlistForm, wireWaitlists } from '../components/waitlist.js';
 import notFound from './notfound.js';
 
@@ -17,14 +18,14 @@ export default function collection(main) {
   <header class="col-hero">
     <div>
       <p class="eyebrow">Collection · ${items.length} products</p>
-      <h1>${esc(c.headline)}</h1>
+      <h1 data-blur-text>${esc(c.headline)}</h1>
       <p>${esc(c.intro)}</p>
     </div>
-    <div class="media">${picture(c.image, { alt: c.imageAlt, sizes: '(min-width: 900px) 46vw, 100vw', priority: true })}</div>
+    <div class="media loop" data-loop="${esc(c.image)}">${picture(c.image, { alt: c.imageAlt, sizes: '(min-width: 900px) 46vw, 100vw', priority: true })}${motionToggle({ className: 'media__toggle' })}</div>
   </header>
   <div class="toolbar"><span class="toolbar__count">${live ? 'Shop now, and see what’s next' : 'Launching soon — tap any product for a closer look'}</span></div>
   <div class="grid-cards">
-    ${items.map((x) => `<div id="${esc(x.item.handle)}" class="reveal">${card(x, { sizes: '(min-width: 900px) 30vw, 48vw' })}</div>`).join('')}
+    ${items.map((x, i) => `<div id="${esc(x.item.handle)}" class="reveal" style="--i:${i % 3}">${card(x, { sizes: '(min-width: 900px) 30vw, 48vw' })}</div>`).join('')}
   </div>
 </div>
 <section class="section" id="waitlist" aria-labelledby="wl-title">

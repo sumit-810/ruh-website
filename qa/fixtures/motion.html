@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion fixture</title>
+<link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+<!--
+  Isolated test page for one motion effect at a time (qa/motion.mjs).
+  Open /qa/fixtures/motion.html?effect=blur (or mask, scroll-reveal, stack,
+  tilt, magnet, curve, field, toggle) from the project root server.
+  Not published: tools/build_public.mjs copies only the site's own pages.
+-->
+<body class="is-ready">
+<main id="main" class="container"></main>
+<script type="module">
+import * as motion from '../../assets/js/lib/motion.js';
+
+const effect = new URLSearchParams(location.search).get('effect');
+const spacer = '<div style="height:120vh" aria-hidden="true"></div>';
+const unit = 'Body · Face · Lip · ';
+const fixtures = {
+  blur: '<h1 class="t-3xl" data-blur-text>Gentle, from the <em>first mist.</em></h1>',
+  mask: '<h2 class="t-xl" data-mask-text>One range, one look</h2>',
+  'scroll-reveal': `${spacer}<p class="statement__text" data-scroll-reveal>Body and skin care for India. One considered range, starting with a mist.</p>${spacer}`,
+  stack: `<div class="exp__stack" data-stack>${[0, 1, 2]
+    .map((i) => `<figure class="exp__card" data-stack-card><div class="media" style="background:hsl(${30 + i * 10} 40% 80%)"></div><figcaption>Card ${i + 1}</figcaption></figure>`)
+    .join('')}</div>${spacer}`,
+  tilt: '<div style="padding:40px;width:420px"><a class="card__media" data-tilt="4" href="#" style="display:block;background:var(--sand)"></a></div>',
+  magnet: '<div style="padding:80px"><a class="btn" data-magnet href="#">Explore the mist</a></div>',
+  curve: `<div class="curve"><svg class="curve__svg" viewBox="0 0 1440 150" data-curved-loop><path id="p" d="M-40 36 Q 720 168 1480 36" fill="none"></path><text class="curve__text"><textPath href="#p">${unit}</textPath></text><text class="curve__text" visibility="hidden"><tspan data-unit>${unit}</tspan></text></svg></div>`,
+  field: '<div class="field" data-grain-field style="height:420px;border-radius:14px"></div>',
+  toggle: `<div style="padding:40px">${motion.motionToggle()}</div>`,
+};
+
+const main = document.getElementById('main');
+main.innerHTML = fixtures[effect] || '<p>Unknown effect.</p>';
+motion.wirePointerEffects();
+motion.wireMotion(main);
+window.__motion = motion;
+window.__ready = true;
+</script>
+</body>
+</html>

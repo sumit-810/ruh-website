@@ -23,7 +23,7 @@ export const card = ({ kind, item }, { sizes = '(min-width: 1100px) 24vw, (min-w
   const status = statusOf(item);
   const buyable = isProduct && isPurchasable(item);
   return `<article class="card${feature ? ' card--feature' : ''}" data-tone="${esc(col?.tone || '')}">
-  <a class="card__media" href="${url}" tabindex="-1" aria-hidden="true">
+  <a class="card__media" href="${url}" tabindex="-1" aria-hidden="true" data-tilt="4">
     ${picture(img, { alt: '', sizes })}
     ${altKey ? `<span class="card__alt">${picture(altKey, { alt: '', sizes })}</span>` : ''}
   </a>

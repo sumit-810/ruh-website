@@ -5,3 +5,4 @@ tools/render/out/
 dist/
 .DS_Store
 public/
+__pycache__/

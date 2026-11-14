@@ -14,15 +14,15 @@ export default function story(main) {
     <div class="media">${picture(s.hero.image, { alt: 'The Gentle Company range on a long travertine shelf', sizes: '(min-width: 1440px) 1344px, 100vw', priority: true })}</div>
   </section>
   <div class="story-hero__text">
-    <h1>${rich(s.hero.title)}</h1>
+    <h1 data-mask-text>${rich(s.hero.title)}</h1>
     <p class="lede">${esc(s.hero.text)}</p>
   </div>
-  <div class="stack-lg" style="margin-top:var(--section)">
+  <div class="chapters" data-stack style="margin-top:var(--section)">
     ${s.chapters
       .map(
-        (c) => `<section class="chapter reveal">
+        (c, i) => `<section class="chapter" data-stack-card aria-labelledby="ch-${i}">
       <div class="media">${picture(c.image, { alt: '', sizes: '(min-width: 900px) 46vw, 100vw' })}</div>
-      <div><h2>${esc(c.title)}</h2><p>${esc(c.text)}</p></div>
+      <div class="chapter__text"><p class="chapter__n" aria-hidden="true">0${i + 1}</p><h2 id="ch-${i}" data-mask-text>${esc(c.title)}</h2><p>${esc(c.text)}</p></div>
     </section>`,
       )
       .join('')}

@@ -54,16 +54,16 @@ const mobileMenu = () => `
   </div>
   <div class="drawer__body">
     <div class="mnav-tiles">
-      <a class="mnav-tile mnav-tile--wide" href="product.html?p=body-mist-no-01">${picture('hero_wide', { alt: '', sizes: '440px' })}<span>Body Mist Nº 01</span></a>
-      ${collections.map((c) => `<a class="mnav-tile" href="${collectionUrl(c)}">${picture(c.image, { alt: '', sizes: '200px' })}<span>${esc(c.name)}</span></a>`).join('')}
-      <a class="mnav-tile" href="shop.html">${picture('lineup', { alt: '', sizes: '200px' })}<span>Shop all</span></a>
+      <a class="mnav-tile mnav-tile--wide" style="--i:0" href="product.html?p=body-mist-no-01">${picture('hero_wide', { alt: '', sizes: '440px' })}<span>Body Mist Nº 01</span></a>
+      ${collections.map((c, i) => `<a class="mnav-tile" style="--i:${i + 1}" href="${collectionUrl(c)}">${picture(c.image, { alt: '', sizes: '200px' })}<span>${esc(c.name)}</span></a>`).join('')}
+      <a class="mnav-tile" style="--i:${collections.length + 1}" href="shop.html">${picture('lineup', { alt: '', sizes: '200px' })}<span>Shop all</span></a>
     </div>
     <ul class="mnav">
-      <li><a href="story.html">Our Story ${icon.arrow}</a></li>
-      <li><a href="journal.html">Journal ${icon.arrow}</a></li>
-      <li><a href="contact.html">Contact ${icon.arrow}</a></li>
+      <li style="--i:${collections.length + 2}"><a href="story.html">Our Story ${icon.arrow}</a></li>
+      <li style="--i:${collections.length + 3}"><a href="journal.html">Journal ${icon.arrow}</a></li>
+      <li style="--i:${collections.length + 4}"><a href="contact.html">Contact ${icon.arrow}</a></li>
     </ul>
-    <div class="mnav-foot"><a href="faq.html">FAQs</a></div>
+    <div class="mnav-foot" style="--i:${collections.length + 5}"><a href="faq.html">FAQs</a></div>
   </div>
 </aside>`;
 
@@ -92,7 +92,7 @@ ${announceBar()}
     </div>
     <a class="wordmark" href="index.html">${wordmark()}</a>
     <div class="header-actions">
-      <button class="icon-btn" type="button" aria-label="Search" data-open-search aria-controls="search-panel" aria-expanded="false">${icon.search}</button>
+      <button class="icon-btn" type="button" aria-label="Search" aria-keyshortcuts="/ Control+K Meta+K" data-open-search aria-controls="search-panel" aria-expanded="false">${icon.search}</button>
       ${
         shop
           ? `<button class="icon-btn" type="button" data-open-bag aria-controls="bag-drawer" aria-expanded="false">${icon.bag}<span class="visually-hidden">Bag, </span><span class="bag-count" data-bag-count aria-hidden="true"></span><span class="visually-hidden" data-bag-count-sr>0 items</span></button>`

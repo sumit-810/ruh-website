@@ -1066,7 +1066,44 @@ def upcoming_single(range_key):
     return 1200, 1500
 
 
+def intro_still():
+    """Brand intro (Living Still Life): body butter on folded linen and travertine, arched window light. No bottle."""
+    world(color=(0.92, 0.84, 0.76), strength=0.28)
+    room(wall_color=PALETTE["plaster"], floor_color=PALETTE["travertine"], wall_y=0.2)
+    stone((0.02, 0.0, 0.0), (0.3, 0.17, 0.06))
+    stone((-0.08, -0.02, 0.06), (0.12, 0.11, 0.035), color=PALETTE["marble"])
+    linen((0.06, -0.025, 0.067), size=(0.15, 0.11, 0.014))
+    JAR_LABEL["scale"] = 0.9
+    product("up_body_butter", (0.065, -0.03, 0.074), rot=-0.18)
+    sphere("pebble", 0.014, (-0.06, -0.05, 0.095 + 0.014), principled("pebble", PALETTE["travertine"], rough=0.6))
+    d = sun((0.58, 0.52, -0.44), energy=6.0, angle_deg=1.0, color=(1.0, 0.87, 0.72))
+    screen(d, (0.0, 0.15, 0.25), pattern="arch.png", distance=0.5, size=1.6, window=2.4)
+    area((-0.35, -0.5, 0.32), (0.02, 0, 0.1), size=1.1, energy=10)
+    camera((0.0, -0.56, 0.2), (0.01, 0.0, 0.12), lens=62, dof=0.57, fstop=5.6)
+    return 1600, 2000
+
+
+def trio_still():
+    """Early access (Living Still Life): one piece from each line on travertine, against clay plaster. No bottle."""
+    world(color=(0.55, 0.38, 0.3), strength=0.16)
+    room(wall_color=PALETTE["plaster_clay"], floor_color=PALETTE["travertine"], wall_y=0.2)
+    stone((0.0, 0.0, 0.0), (0.26, 0.15, 0.05))
+    stone((0.06, -0.01, 0.05), (0.09, 0.08, 0.025), color=PALETTE["marble"])
+    JAR_LABEL["scale"] = 0.9
+    product("up_body_lotion", (-0.045, 0.012, 0.05), rot=0.12)
+    product("up_moisturiser", (0.06, -0.012, 0.075), rot=-0.2)
+    product("up_lip_balm", (0.0, -0.045, 0.05), rot=0.25)
+    d = sun((0.6, 0.5, -0.42), energy=6.5, angle_deg=1.2, color=(1.0, 0.85, 0.68))
+    screen(d, (0.0, 0.1, 0.12), pattern="leaves.png", distance=0.6, size=2.0, repeat=1.2)
+    area((-0.35, -0.5, 0.3), (0, 0, 0.1), size=1.0, energy=8, color=(1, 0.93, 0.86))
+    area((0.3, -0.3, 0.22), (0, 0, 0.1), size=0.4, energy=3)
+    camera((0.0, -0.56, 0.18), (0.005, 0.0, 0.09), lens=62, dof=0.56, fstop=5.6)
+    return 1600, 1600
+
+
 SCENES = {
+    "intro_still": intro_still,
+    "trio_still": trio_still,
     "hero_wide": hero_wide,
     "hero_portrait": hero_portrait,
     "pack_front": pack_front,

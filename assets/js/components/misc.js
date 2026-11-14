@@ -24,10 +24,11 @@ export const reveal = (root = document) => {
 };
 
 /**
- * Product gallery: cross-fading slides, thumbnails, arrows, swipe, keyboard,
- * and hover/click zoom (desktop) that follows the pointer.
+ * Product gallery: cross-fading slides, thumbnails, arrows, swipe and keyboard.
+ * Clicking (or tapping, or pressing Enter on) the main image opens the
+ * full-screen viewer with pinch, drag and zoom.
  */
-export const wireGallery = (root) => {
+export const wireGallery = (root, { images = [], title = '' } = {}) => {
   const main = $('.gallery__main', root);
   if (!main) return;
   const slides = $$('.gallery__slide', main);
@@ -42,40 +43,44 @@ export const wireGallery = (root) => {
     });
     thumbs.forEach((t, k) => t.setAttribute('aria-current', String(k === index)));
     if (count) count.textContent = `${index + 1} / ${slides.length}`;
-    main.classList.remove('is-zoom');
   };
   thumbs.forEach((t, k) => t.addEventListener('click', () => go(k)));
   $('.gallery__nav--prev', root)?.addEventListener('click', () => go(index - 1));
   $('.gallery__nav--next', root)?.addEventListener('click', () => go(index + 1));
+  const expand = (trigger) =>
+    import('./lightbox.js').then(({ openLightbox }) =>
+      openLightbox({ images, index, title, trigger, onChange: (i) => go(i) }),
+    );
   main.addEventListener('keydown', (e) => {
+    if (document.querySelector('.lb.is-open')) return; // the viewer handles keys while open
     if (e.key === 'ArrowRight') go(index + 1);
     if (e.key === 'ArrowLeft') go(index - 1);
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === main && images.length) {
+      e.preventDefault();
+      expand(main);
+    }
   });
+  $('.gallery__expand', root)?.addEventListener('click', (e) => expand(e.currentTarget));
   // swipe
   let x0 = null;
-  main.addEventListener('touchstart', (e) => (x0 = e.touches[0].clientX), { passive: true });
+  let swiped = false;
+  main.addEventListener('touchstart', (e) => {
+    x0 = e.touches[0].clientX;
+    swiped = false;
+  }, { passive: true });
   main.addEventListener('touchend', (e) => {
     if (x0 === null) return;
     const dx = e.changedTouches[0].clientX - x0;
-    if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
+    if (Math.abs(dx) > 40) {
+      go(index + (dx < 0 ? 1 : -1));
+      swiped = true;
+    }
     x0 = null;
   });
-  // zoom (pointer devices)
-  if (matchMedia('(hover: hover)').matches) {
-    main.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return;
-      main.classList.toggle('is-zoom');
-      move(e);
-    });
-    const move = (e) => {
-      if (!main.classList.contains('is-zoom')) return;
-      const r = main.getBoundingClientRect();
-      const img = $('.gallery__slide.is-on img', main);
-      if (img) img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
-    };
-    main.addEventListener('mousemove', move);
-    main.addEventListener('mouseleave', () => main.classList.remove('is-zoom'));
-  }
+  main.addEventListener('click', (e) => {
+    if (e.target.closest('button') || swiped || !images.length) return;
+    expand(main);
+  });
   go(0);
 };
 
@@ -91,6 +96,7 @@ export const wireShelf = (root) => {
     const max = track.scrollWidth - track.clientWidth;
     if (prev) prev.disabled = track.scrollLeft <= 4;
     if (next) next.disabled = track.scrollLeft >= max - 4;
+    root.classList.toggle('is-end', track.scrollLeft >= max - 4);
     if (bar) {
       const w = max > 0 ? track.clientWidth / track.scrollWidth : 1;
       bar.style.width = `${w * 100}%`;

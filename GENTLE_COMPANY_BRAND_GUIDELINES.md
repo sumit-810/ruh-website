@@ -141,8 +141,19 @@ The current imagery shows the **packaging design**. When manufactured packaging 
    - tabs on the collection shelf;
    - quick view;
    - hover shows a second image;
-   - the gallery zooms;
-   - moments switcher;
-   - range hotspots;
+   - the gallery opens full screen, with pinch and zoom;
+   - moments stack as you scroll;
+   - range hotspots, filtered by line;
+   - a ⌘K search palette;
    - sticky mobile bar.
 5. Commerce stays honest. A price and bag appear only when the shop is open. Until then the action is "Notify me", which saves the email to Brevo.
+
+## 9. Motion — "Living still life"
+
+The brand moves the way light moves in a quiet room: slowly, softly, without asking for attention.
+
+- **Only the light moves in our loops.** The packaging, camera and set stay still; the leaf shadow drifts across the plaster. Loops are rendered from the same Blender scenes as the stills, so labels stay real type.
+- **Soft verbs only:** blur-in, brighten, glare, settle, drift. No bounce, spin, glitch, parallax jumps or cursor trails.
+- **One easing curve and one duration scale** (`--ease`, `--ease-out`, `--t-fast`/`--t-med`/`--t-slow`/`--t-reveal`, `--stagger`). Tilt stays at 4° or less; magnetic pull at 6 px or less.
+- **Motion is never needed to understand anything.** Under `prefers-reduced-motion` everything is shown at rest. On Save-Data no video or WebGL loads. Every section with ambient motion has a pause button, and the choice is remembered.
+- **Text stays legible while it animates.** The scroll-reveal resting colour (`--sr-dim`, #8f7e72) still passes WCAG AA for large text.

@@ -5,6 +5,7 @@ The D2C website for **Gentle Company**, a body and skin care brand for India. It
 - **Product-first and photography-led.** Every product is shown in Gentle Company's packaging system.
 - **No placeholders, ever.** Anything unconfirmed (price, size, notes, ingredients, company details) is simply hidden until it's filled in.
 - **Shop opens from config.** When the shop is enabled and a price is confirmed, Razorpay checkout appears. Until then, product pages offer **Notify me**, which posts to Brevo through `/api/subscribe`.
+- **A living still life.** Slow, seamless loops rendered from our own Blender scenes (only the window light moves) and one gentle motion vocabulary: blur-in, brighten, glare, settle, drift. Everything stops under `prefers-reduced-motion`, nothing heavy loads on Save-Data, and every moving section has a pause control.
 
 ## Documents
 
@@ -13,6 +14,8 @@ The D2C website for **Gentle Company**, a body and skin care brand for India. It
 | [`RESEARCH_AND_DESIGN_STRATEGY.md`](RESEARCH_AND_DESIGN_STRATEGY.md) | Competitor research (sources and dates), answers to the 8 research questions, design direction |
 | [`GENTLE_COMPANY_BRAND_GUIDELINES.md`](GENTLE_COMPANY_BRAND_GUIDELINES.md) | Name, logo system, colour (with contrast ratios), type, voice, packaging, photography |
 | [`IMPLEMENTATION_REPORT.md`](IMPLEMENTATION_REPORT.md) | What changed, how the old brand was removed, interactions, testing, what's still needed |
+| [`LIVING_STILL_LIFE.md`](LIVING_STILL_LIFE.md) | The "Living still life" redesign: motion system, loops, new interactions, tests |
+| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | React Bits licence notice and other credits (inspiration sources, fonts) |
 | [`PRODUCT_CONFIGURATION.md`](PRODUCT_CONFIGURATION.md) | Every editable field, and how to open the shop |
 | [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md) | The business details and decisions needed to start selling |
 | [`PHOTOGRAPHY_BRIEF.md`](PHOTOGRAPHY_BRIEF.md) | Shot list and specs for photographing manufactured packaging |
@@ -72,13 +75,17 @@ assets/
   brand/                   wordmark, stacked lockup, monogram (SVG)
   img/                     responsive AVIF/WebP/JPEG, favicon, og-image
   js/app.js                bootstrap: header, footer, bag, search, page module
-  js/components/           header, footer, cards + quick view, product blocks, bag, search, waitlist, misc (gallery, shelf)
+  img/loops/               seamless loop videos (MP4/WebM) rendered from the Blender scenes
+  js/lib/motion.js         motion system: blur/mask text, scroll reveal, scroll stack, tilt, magnet, loops, curved line, grain field, pause control
+  js/components/           header, footer, cards + quick view, product blocks, bag, search palette, waitlist, lightbox, misc (gallery, shelf)
   js/pages/                one module per page type
-  js/data/                 generated: images.js (manifest), brand.js (inline SVG), hotspots.js
+  js/data/                 generated: images.js (manifest), loops.js (loop manifest), brand.js (inline SVG), hotspots.js
 tools/
   build_brand.py           outlines the logo system from Marcellus (fontTools)
   render/make_textures.py  typesets every packaging label with the brand fonts
   render/scenes.py         Blender scenes: packaging, campaign and range images (+ hotspot positions)
+  render/loops.py          the same scenes as seamless loops (only the leaf light moves)
+  encode_loops.mjs         loop frames → MP4/WebM (ffmpeg) + assets/js/data/loops.js
   build_images.py          renders/photos → responsive images + manifest + og-image
   build_public.mjs         Vercel build → public/
   launch_check.mjs         what's still needed before selling
@@ -110,6 +117,26 @@ To regenerate the images (needs `pip install bpy==5.2.3 pillow fonttools`), run 
    python3 tools/build_images.py
    ```
 
+### Loops
+
+The hero, the three category panels and the collection heroes play short loops over their still images. They are rendered locally, with no cloud service involved:
+
+```bash
+python tools/render/loops.py hero_wide --frames 40 --samples 32
+```
+
+```bash
+python tools/render/loops.py family_body --frames 40 --samples 32 --scale 0.8
+```
+
+Do the same for `hero_portrait`, `family_face` and `family_lip`, then encode:
+
+```bash
+node tools/encode_loops.mjs
+```
+
+Each loop is 10 seconds and kept under 1.5 MB. A loop that is missing from the manifest is simply not played; the still stays.
+
 When manufactured packaging exists, photograph it (`PHOTOGRAPHY_BRIEF.md`), drop the files into `assets-src/photography/<key>.jpg` and run `build_images.py`. Photos replace renders one by one.
 
 ## Quality assurance
@@ -129,7 +156,8 @@ From inside `qa/`, run whichever suites you need:
 | Command | What it checks |
 |---|---|
 | `node smoke.mjs` | Every page at 1440, 820 and 390 px: console errors, 404s, broken images, overflow |
-| `node interactions.mjs` | Navigation, shelf, quick view, gallery, forms, accessibility (axe) |
+| `node interactions.mjs` | Navigation, shelf, quick view, living panels, stacked moments, range filter, gallery viewer, search palette, forms, sticky bar, reduced motion and Save-Data, accessibility (axe) |
+| `node motion.mjs` | Each motion effect on its own test page (`qa/fixtures/motion.html`), with and without reduced motion |
 | `node --test functions.test.mjs` | Payment and email server functions |
 | `node checkout.mjs` | Razorpay flow end to end, with the gateway mocked |
 | `node brand-audit.mjs` | No old brand name or placeholder text on any rendered page |

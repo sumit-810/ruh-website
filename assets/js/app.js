@@ -13,6 +13,7 @@ import { renderFooter } from './components/footer.js';
 import { renderBag, addToBag } from './components/bag-drawer.js';
 import { renderSearch } from './components/search.js';
 import { reveal, supportButton } from './components/misc.js';
+import { wireMotion, wirePointerEffects } from './lib/motion.js';
 import { wireWaitlists } from './components/waitlist.js';
 import { closeActive } from './components/overlay.js';
 import { getProduct, getVariant, isPurchasable } from './lib/catalog.js';
@@ -74,6 +75,7 @@ const renderPage = async () => {
   }
   wireWaitlists(main);
   reveal(main);
+  wireMotion(main);
   // content is rendered after load, so the browser can't jump to #anchors by itself
   return scrollToAnchor(route.anchor);
 };
@@ -153,6 +155,7 @@ const start = async () => {
   document.body.append(live);
 
   renderHeader({ overlay: document.body.dataset.page === 'home' });
+  wirePointerEffects();
   renderBag();
   renderSearch();
   supportButton();

@@ -27,6 +27,37 @@ const infoRows = (p) => {
   return rows.length ? `<table class="info-table"><tbody>${rows.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>` : '';
 };
 
+/**
+ * "At a glance": a compact summary built only from confirmed catalogue data —
+ * category, line, status, size once confirmed — and the line it belongs to.
+ */
+const glance = (p, col) => {
+  const v = defaultVariant(p);
+  const line = allItems(col.handle);
+  const rows = [
+    ['Category', esc(p.category)],
+    ['Line', `<a href="${collectionUrl(col)}">${esc(col.name)}</a>`],
+    ['Status', esc(isPurchasable(p) ? 'Available now' : p.statusLabel || 'Coming soon')],
+    v?.size ? ['Size', esc(v.size)] : null,
+  ].filter(Boolean);
+  return `<section class="glance" aria-labelledby="glance-title">
+    <h2 class="glance__title" id="glance-title">At a glance</h2>
+    <dl class="glance__list">${rows.map(([k, val]) => `<div><dt>${k}</dt><dd>${val}</dd></div>`).join('')}</dl>
+    <a class="glance__range" href="${collectionUrl(col)}">
+      <span class="glance__thumbs" aria-hidden="true">${line
+        .slice(0, 6)
+        .map((x) => {
+          const key = x.kind === 'product' ? x.item.images[0]?.key : x.item.image;
+          const src = thumb(key);
+          return src ? `<img src="${src}" alt="" width="36" height="45" loading="lazy">` : '';
+        })
+        .join('')}</span>
+      <span>Part of ${esc(col.name)} · ${line.length} products</span>
+      ${icon.arrow}
+    </a>
+  </section>`;
+};
+
 const productLd = (p) => {
   const v = defaultVariant(p);
   const buyable = isPurchasable(p);
@@ -91,11 +122,12 @@ export default function product(main) {
       <div class="gallery__thumbs">
         ${p.images.map((im, i) => `<button type="button" aria-label="Image ${i + 1}: ${esc(im.alt)}" aria-current="${i === 0}">${picture(im.key, { alt: '', sizes: '80px' })}</button>`).join('')}
       </div>
-      <div class="gallery__main" tabindex="0" aria-label="Product images — use arrow keys to browse, click to zoom">
+      <div class="gallery__main" data-glare tabindex="0" aria-label="Product images — use arrow keys to browse, Enter to open full screen">
         ${p.images.map((im, i) => `<div class="gallery__slide${i === 0 ? ' is-on' : ''}">${picture(im.key, { alt: im.alt, sizes: '(min-width: 960px) 52vw, 100vw', priority: i === 0 })}</div>`).join('')}
         <button class="gallery__nav gallery__nav--prev" type="button" aria-label="Previous image">${icon.arrowLeft}</button>
         <button class="gallery__nav gallery__nav--next" type="button" aria-label="Next image">${icon.arrow}</button>
         <span class="gallery__count" aria-hidden="true">1 / ${p.images.length}</span>
+        <button class="gallery__expand" type="button" aria-label="Open full-screen image viewer">${icon.expand}</button>
       </div>
     </div>
 
@@ -108,6 +140,7 @@ export default function product(main) {
       <p class="buy__tagline">${esc(p.tagline)}</p>
       ${sc.mood ? `<p class="small muted" style="margin:0">${esc(sc.mood)}</p>` : ''}
       ${buyBox(p)}
+      ${glance(p, col)}
       ${
         p.highlights?.length
           ? `<div class="highlights">${p.highlights.map((h) => `<div class="highlight"><h3>${esc(h.title)}</h3><p class="small muted">${esc(h.text)}</p></div>`).join('')}</div>`
@@ -154,7 +187,7 @@ ${
   ${buyable ? `<button class="btn btn--small" type="button" data-sticky-add tabindex="-1">Add to bag</button>` : `<a class="btn btn--small" href="#notify" tabindex="-1" data-sticky-notify>Notify me</a>`}
 </div>`;
 
-  wireGallery(main);
+  wireGallery(main, { images: p.images, title: p.name });
   wireBuy(main, p);
   wireShelf($('[data-shelf]', main));
   wireWaitlists(main);
