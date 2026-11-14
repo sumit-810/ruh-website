@@ -26,10 +26,12 @@ import scenes  # noqa: E402
 
 OUT = Path(__file__).parent / "out" / "loops"
 
-# name: (scene function in scenes.py, sway amplitude in screen UV, flutter amplitude)
+# name: (scene function in scenes.py, sway amplitude in screen UV, flutter amplitude[, light breathing, sway rotation in degrees])
+# The hero loops move more (and the sunlight breathes, like a passing cloud) so the motion is
+# noticeable at full-screen size; the smaller panels keep a quieter drift.
 LOOPS = {
-    "hero_wide": ("hero_wide", 0.022, 0.005),
-    "hero_portrait": ("hero_portrait", 0.022, 0.005),
+    "hero_wide": ("hero_wide", 0.05, 0.012, 0.12, 2.2),
+    "hero_portrait": ("hero_portrait", 0.05, 0.012, 0.12, 2.2),
     "family_body": ("family_body", 0.026, 0.005),
     "family_face": ("family_face", 0.026, 0.005),
     "family_lip": ("family_lip", 0.026, 0.005),
@@ -57,17 +59,28 @@ def screen_mappings():
     return maps
 
 
-def sway(t, amp, flutter):
+def sway(t, amp, flutter, rot_deg=0.9):
     """Closed path for loop phase t in [0, 1): integer harmonics only, so f(0) == f(1)."""
     tau = 2 * math.pi
     dx = amp * math.sin(tau * t) + flutter * math.sin(tau * 3 * t + 0.7)
     dy = 0.45 * amp * math.sin(tau * 2 * t + 1.1) + 0.6 * flutter * math.sin(tau * 5 * t + 0.3)
-    rot = math.radians(0.9) * math.sin(tau * t + 0.4)
+    rot = math.radians(rot_deg) * math.sin(tau * t + 0.4)
     return dx, dy, rot
 
 
+def breathe(t, depth):
+    """Sunlight strength factor: one slow swell per loop, starting at the still's level (1.0 at t=0)."""
+    return 1 + depth * math.sin(2 * math.pi * t)
+
+
+def suns():
+    return [(li, li.energy) for li in bpy.data.lights if li.type == "SUN"]
+
+
 def render_loop(name, frames, samples, scale, start, end):
-    fn, amp, flutter = LOOPS[name]
+    fn, amp, flutter, *rest = LOOPS[name]
+    depth = rest[0] if rest else 0.0
+    rot_deg = rest[1] if len(rest) > 1 else 0.9
     scenes._mats.clear()
     s = scenes.reset()
     scenes.SCENES[fn]()
@@ -82,13 +95,16 @@ def render_loop(name, frames, samples, scale, start, end):
     maps = screen_mappings()
     if not maps:
         raise SystemExit(f"{name}: no leaf screen found")
+    lights = suns()
     out = OUT / name
     out.mkdir(parents=True, exist_ok=True)
     for f in range(start, min(end, frames)):
-        dx, dy, rot = sway(f / frames, amp, flutter)
+        dx, dy, rot = sway(f / frames, amp, flutter, rot_deg)
         for node, (lx, ly, lz), r0 in maps:
             node.inputs["Location"].default_value = (lx + dx, ly + dy, lz)
             node.inputs["Rotation"].default_value[2] = r0 + rot
+        for li, e0 in lights:
+            li.energy = e0 * breathe(f / frames, depth)
         s.render.filepath = str(out / f"{f:04d}.png")
         bpy.ops.render.render(write_still=True)
         print(f"{name} {f + 1}/{frames}", flush=True)

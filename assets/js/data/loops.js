@@ -9,8 +9,8 @@ export const loops = {
       "mp4"
     ],
     "bytes": {
-      "webm": 108477,
-      "mp4": 436450
+      "webm": 168360,
+      "mp4": 605104
     }
   },
   "family_body": {
@@ -61,8 +61,8 @@ export const loops = {
       "mp4"
     ],
     "bytes": {
-      "webm": 90958,
-      "mp4": 247750
+      "webm": 149726,
+      "mp4": 343889
     }
   }
 };

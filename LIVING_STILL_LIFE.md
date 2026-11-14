@@ -11,7 +11,7 @@ The idea: keep the calm, product-first site and let it breathe. Only soft verbs 
 ### Home
 | Section | Before | Now |
 |---|---|---|
-| Hero | Still render, static headline | **Cinemagraph**: a 10-second seamless loop where only the leaf shadow drifts across the plaster. The still image stays underneath and is still the LCP image. The headline resolves word by word from soft focus; the primary button has a gentle magnetic pull; a pause button sits on the image. |
+| Hero | Still render, static headline | **Cinemagraph**: a 10-second seamless loop. The leaf shadows sway across the whole wall behind the headline and the sunlight slowly swells and fades, like a passing cloud; the bottle, label and camera never move. The still image stays underneath and is still the LCP image. The headline resolves word by word from soft focus; the primary button has a gentle magnetic pull; a pause button sits on the image. |
 | Collection shelf | Cards with a hover image | A glare sweep across the glass on hover, a ≤4° tilt and a warm spotlight that follow the pointer (mouse only), and a gradual-blur edge while there is more to scroll. |
 | Shop by category | Three static tiles | **Three living panels**: tall panels with slow loops, vertical labels, and hover widening (desktop). They stack on mobile. A pause button sits in the section header. |
 | Brand intro | Bottle image, title and two lines | A **new composition** (Body Butter on linen and travertine, arched window light). The statement brightens word by word as it is read. |
@@ -52,17 +52,22 @@ Browsers download one format per loop (WebM where supported, otherwise MP4).
 
 | File | What | WebM | MP4 |
 |---|---|---|---|
-| `assets/img/loops/hero_wide.*` | Hero loop, desktop (1280×720, 10 s) | 106 KB | 426 KB |
-| `assets/img/loops/hero_portrait.*` | Hero loop, mobile (576×720, 10 s) | 89 KB | 242 KB |
+| `assets/img/loops/hero_wide.*` | Hero loop, desktop (1280×720, 10 s) | 164 KB | 591 KB |
+| `assets/img/loops/hero_portrait.*` | Hero loop, mobile (576×720, 10 s) | 146 KB | 336 KB |
 | `assets/img/loops/family_body.*` | Body panel and collection hero (576×720) | 65 KB | 162 KB |
 | `assets/img/loops/family_face.*` | Face panel and collection hero | 51 KB | 142 KB |
 | `assets/img/loops/family_lip.*` | Lip panel and collection hero | 48 KB | 157 KB |
 | `assets/img/intro_still-*` | Brand intro composition (AVIF/WebP/JPEG, 480–1280 px) | | |
 | `assets/img/trio_still-*` | Early-access composition (AVIF/WebP/JPEG, 480–1280 px) | | |
 
-The loop seam was measured frame by frame: the jump from the last frame to the first is the same size as an ordinary frame step (0.86 against a 0.83 maximum).
+The loop seam was measured frame by frame: the jump from the last frame to the first is no bigger than an ordinary frame step (hero: 0.93 against a 1.04 maximum).
 
 Loops sit under `assets/img/`, so the existing cache headers in `vercel.json` apply without any configuration change. To re-render, see the README's **Images → Loops** section.
+
+## Fixed after review
+
+- **The hero video covered the headline on desktop.** Once the loop faded in, it was painted above the headline, text and buttons, so the left side of the hero looked blank. Loop frames now isolate their own layering (`.loop { isolation: isolate }`). A new test makes the video hit-testable for a moment and checks what is really on top; it fails on the old layering and passes on the new.
+- **The hero motion was too faint to notice.** The hero loops were re-rendered with about twice the sway (`tools/render/loops.py`: amplitude 0.05, rotation 2.2°) and a ±12% swell in sunlight. The category panels keep their quieter drift.
 
 ## Testing
 
@@ -70,7 +75,7 @@ Every suite was run on 14 Nov 2026 against the output of the Vercel build comman
 
 | Suite | Result |
 |---|---|
-| `qa/interactions.mjs` | **79/79**. All the earlier journeys, plus: hero loop plays and pauses, blur-in headline, living panels widen, brand statement brightens, stacked moments with the index following, range filter, viewer (open at the current image, keys, zoom, drag, Escape and focus return, axe on the open viewer), At a glance, search palette (Ctrl+K, nothing pre-selected, arrows, Enter, axe on the open palette), mobile menu stagger, sticky bar never covers the notify panel (full-page scan), touch tap and double-tap zoom, reduced motion (no video or WebGL, all text visible), Save-Data (nothing heavy downloaded), axe WCAG A/AA on six templates |
+| `qa/interactions.mjs` | **80/80**. All the earlier journeys, plus: hero loop plays and pauses and never covers the headline, blur-in headline, living panels widen, brand statement brightens, stacked moments with the index following, range filter, viewer (open at the current image, keys, zoom, drag, Escape and focus return, axe on the open viewer), At a glance, search palette (Ctrl+K, nothing pre-selected, arrows, Enter, axe on the open palette), mobile menu stagger, sticky bar never covers the notify panel (full-page scan), touch tap and double-tap zoom, reduced motion (no video or WebGL, all text visible), Save-Data (nothing heavy downloaded), axe WCAG A/AA on six templates |
 | `qa/motion.mjs` | **49/49**. Each effect alone, with and without reduced motion |
 | `qa/functions.test.mjs` | **14/14** (Razorpay order and verification, Brevo subscribe and contact) |
 | `qa/checkout.mjs` | **12/12** (Razorpay flow end to end, gateway mocked) |
@@ -82,8 +87,8 @@ Every suite was run on 14 Nov 2026 against the output of the Vercel build comman
 
 | Page | Production `main` | This branch | Loops (after load) |
 |---|---|---|---|
-| Home, mobile | 397 KB · LCP 140 ms · CLS 0.000 | 427 KB · LCP 212 ms · CLS 0.001 | 89 KB |
-| Home, desktop | 448 KB · LCP 168 ms · CLS 0.000 | 477 KB · LCP 200 ms · CLS 0.001 | 106 KB |
+| Home, mobile | 397 KB · LCP 140 ms · CLS 0.000 | 427 KB · LCP 188 ms · CLS 0.001 | 146 KB |
+| Home, desktop | 448 KB · LCP 168 ms · CLS 0.000 | 477 KB · LCP 248 ms · CLS 0.001 | 164 KB |
 | Product, mobile | 366 KB · LCP 124 ms · CLS 0.000 | 414 KB · LCP 132 ms · CLS 0.000 | — |
 | Product, desktop | 426 KB · LCP 232 ms · CLS 0.000 | 475 KB · LCP 204 ms · CLS 0.000 | — |
 | Face collection, mobile | 294 KB · LCP 120 ms · CLS 0.000 | 338 KB · LCP 124 ms · CLS 0.000 | 51 KB |
