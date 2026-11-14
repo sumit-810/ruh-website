@@ -66,6 +66,19 @@ const watch = (page) => {
   if (loopCount) {
     await page.waitForFunction(() => document.querySelector('.hero__media video') && !document.querySelector('.hero__media video').paused, null, { timeout: 15000 }).catch(() => {});
     ok('Hero loop plays over the still image', await page.$eval('.hero__media', (h) => !!h.querySelector('video') && !h.querySelector('video').paused && !!h.querySelector('img')));
+    // the video ignores the pointer, so make it hit-testable for a moment to see what is really painted on top
+    const covered = await page.evaluate(() => {
+      const v = document.querySelector('.hero__media video');
+      v.style.pointerEvents = 'auto';
+      const at = (el) => {
+        const r = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(r.left + Math.min(40, r.width / 2), r.top + r.height / 2));
+      };
+      const ok = at(document.querySelector('#hero-title')) && at(document.querySelector('.hero__ctas .btn')) && at(document.querySelector('.hero__text'));
+      v.style.pointerEvents = '';
+      return !ok;
+    });
+    ok('Hero loop never covers the headline, text or buttons', !covered);
     await page.click('.hero__toggle');
     ok('Pause control stops the hero loop', await page.$eval('.hero__media video', (v) => v.paused));
     await page.click('.hero__toggle');

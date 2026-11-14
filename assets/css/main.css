@@ -534,7 +534,9 @@ body.has-sticky-bar .support-fab { bottom: calc(92px + env(safe-area-inset-botto
 .motion-toggle:hover { border-color: var(--cocoa); background: var(--porcelain); }
 .motion-toggle svg { width: 14px; height: 14px; }
 .hero__toggle { position: absolute; right: var(--gutter); bottom: 18px; z-index: 3; }
-/* living loops: the still stays underneath; the video fades in once playing */
+/* living loops: the still stays underneath; the video fades in once playing.
+   isolation keeps the video's z-index inside its own frame, so it can never paint over text (e.g. the hero headline). */
+.loop { isolation: isolate; }
 .loop__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0; pointer-events: none; transition: opacity 1200ms var(--ease); }
 .loop.is-playing .loop__video { opacity: 1; }
 /* category: three tall living panels that widen on hover */
