@@ -340,9 +340,24 @@ const loopVideo = (name) => {
   return v;
 };
 
+/** Run `fn` once the page has finished loading and the browser is idle. */
+const whenIdle = (fn) => {
+  const idle = () => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 300));
+  if (document.readyState === 'complete') idle();
+  else window.addEventListener('load', idle, { once: true });
+};
+
 export const wireLoops = (root = document) => {
   const hosts = [...root.querySelectorAll('[data-loop]')].filter((h) => !h.dataset.loopWired);
   if (!hosts.length || !mediaAllowed()) return;
+  hosts.forEach((h) => (h.dataset.loopWired = '1'));
+  // loops never compete with the first paint: start after load, when idle
+  let cancelled = false;
+  onRouteChange(() => (cancelled = true));
+  whenIdle(() => !cancelled && startLoops(hosts));
+};
+
+const startLoops = (hosts) => {
   const state = new Map();
   const play = (h) => {
     const s = state.get(h);
@@ -365,15 +380,12 @@ export const wireLoops = (root = document) => {
     h.append(v);
     s.video = v;
   };
-  hosts.forEach((h) => {
-    h.dataset.loopWired = '1';
-    state.set(h, { visible: false, video: undefined });
-  });
+  hosts.forEach((h) => state.set(h, { visible: false, video: undefined }));
   // start downloading a little before the loop scrolls into view
   const stopNear = watch(
     hosts,
     (e) => {
-      if (!e.isIntersecting) return;
+      if (!e.isIntersecting || !ambientOK()) return; // paused visitors download nothing
       ensure(e.target);
       play(e.target);
     },
@@ -382,12 +394,19 @@ export const wireLoops = (root = document) => {
   const stopVisible = watch(hosts, (e) => {
     const s = state.get(e.target);
     s.visible = e.isIntersecting;
-    if (s.visible) {
+    if (s.visible && ambientOK()) {
       ensure(e.target);
       play(e.target);
     } else pause(e.target);
   });
-  const onMotion = () => hosts.forEach((h) => (ambientOK() ? play(h) : pause(h)));
+  const onMotion = () =>
+    hosts.forEach((h) => {
+      if (!ambientOK()) return pause(h);
+      if (state.get(h).visible) {
+        ensure(h);
+        play(h);
+      }
+    });
   window.addEventListener('motion:change', onMotion);
   onRouteChange(() => {
     stopNear();
@@ -401,44 +420,49 @@ export const wireLoops = (root = document) => {
  * Curved loop: a slow line of text drifting along a gentle arc.
  * ------------------------------------------------------------------------- */
 export const curvedLoop = (root = document) => {
-  [...root.querySelectorAll('[data-curved-loop]')].forEach((svg) => {
-    const path = svg.querySelector('path');
-    const text = svg.querySelector('textPath');
-    const unit = svg.querySelector('[data-unit]');
-    if (!path || !text || !unit) return;
-    const unitLen = unit.getComputedTextLength();
-    if (!unitLen) return;
-    const reps = Math.ceil(path.getTotalLength() / unitLen) + 2;
-    text.textContent = Array(reps).fill(unit.textContent).join('');
-    let offset = -unitLen;
-    let raf = 0;
-    let lastT = 0;
-    let visible = false;
-    const tick = (t) => {
-      raf = 0;
-      if (!visible || !ambientOK()) return;
-      const dt = lastT ? Math.min(64, t - lastT) : 16;
-      lastT = t;
-      offset += dt * 0.03; // px per ms
-      if (offset >= 0) offset -= unitLen;
-      text.setAttribute('startOffset', offset.toFixed(1));
-      raf = requestAnimationFrame(tick);
-    };
-    text.setAttribute('startOffset', String(offset));
-    const start = () => {
-      lastT = 0;
-      if (!raf && visible && ambientOK()) raf = requestAnimationFrame(tick);
-    };
-    const stop = watch(svg, (e) => {
-      visible = e.isIntersecting;
-      start();
-    });
-    window.addEventListener('motion:change', start);
-    onRouteChange(() => {
-      stop();
-      window.removeEventListener('motion:change', start);
-      cancelAnimationFrame(raf);
-    });
+  const svgs = [...root.querySelectorAll('[data-curved-loop]')];
+  if (!svgs.length) return;
+  // measure the repeat only once the display font has loaded, so the wrap point is exact
+  (document.fonts?.ready || Promise.resolve()).then(() => svgs.forEach(startCurve));
+};
+
+const startCurve = (svg) => {
+  const path = svg.querySelector('path');
+  const text = svg.querySelector('textPath');
+  const unit = svg.querySelector('[data-unit]');
+  if (!path || !text || !unit) return;
+  const unitLen = unit.getComputedTextLength();
+  if (!unitLen) return;
+  const reps = Math.ceil(path.getTotalLength() / unitLen) + 2;
+  text.textContent = Array(reps).fill(unit.textContent).join('');
+  let offset = -unitLen;
+  let raf = 0;
+  let lastT = 0;
+  let visible = false;
+  const tick = (t) => {
+    raf = 0;
+    if (!visible || !ambientOK()) return;
+    const dt = lastT ? Math.min(64, t - lastT) : 16;
+    lastT = t;
+    offset += dt * 0.03; // px per ms
+    if (offset >= 0) offset -= unitLen;
+    text.setAttribute('startOffset', offset.toFixed(1));
+    raf = requestAnimationFrame(tick);
+  };
+  text.setAttribute('startOffset', String(offset));
+  const start = () => {
+    lastT = 0;
+    if (!raf && visible && ambientOK()) raf = requestAnimationFrame(tick);
+  };
+  const stop = watch(svg, (e) => {
+    visible = e.isIntersecting;
+    start();
+  });
+  window.addEventListener('motion:change', start);
+  onRouteChange(() => {
+    stop();
+    window.removeEventListener('motion:change', start);
+    cancelAnimationFrame(raf);
   });
 };
 

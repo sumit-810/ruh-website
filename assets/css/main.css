@@ -754,6 +754,7 @@ body.has-sticky-bar .support-fab { bottom: calc(92px + env(safe-area-inset-botto
 .glance__range:hover { color: var(--cocoa); }
 .glance__range:hover .icon { transform: translateX(3px); }
 .glance__thumbs { display: flex; }
+.glance__thumbs picture { display: contents; }
 .glance__thumbs img { width: 30px; height: 38px; object-fit: cover; border-radius: 4px; border: 2px solid var(--milk); background: var(--sand); margin-left: -8px; }
 .glance__thumbs img:first-child { margin-left: 0; }
 .highlights { display: grid; gap: var(--s-3); }

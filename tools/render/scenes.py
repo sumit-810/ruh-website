@@ -1079,7 +1079,7 @@ def intro_still():
     d = sun((0.58, 0.52, -0.44), energy=6.0, angle_deg=1.0, color=(1.0, 0.87, 0.72))
     screen(d, (0.0, 0.15, 0.25), pattern="arch.png", distance=0.5, size=1.6, window=2.4)
     area((-0.35, -0.5, 0.32), (0.02, 0, 0.1), size=1.1, energy=10)
-    camera((0.0, -0.56, 0.2), (0.01, 0.0, 0.12), lens=62, dof=0.57, fstop=5.6)
+    camera((0.0, -0.56, 0.2), (0.01, 0.0, 0.12), lens=62, dof=0.545, fstop=5.6)  # focus on the jar label
     return 1600, 2000
 
 

@@ -8,9 +8,9 @@
  * Needs a local ffmpeg with libx264 and libvpx-vp9. No network service is used.
  *
  * The frames are a closed cycle (frame N would equal frame 0), rendered at a
- * low frame rate. The first frame is appended after the last, the sequence is
- * motion-interpolated to 25 fps, and the duplicate is trimmed off, so the
- * video loops without a visible seam.
+ * low frame rate. Frames 0 and 1 are appended after the last, the sequence is
+ * motion-interpolated to 25 fps, and the output is trimmed to exactly one
+ * cycle, so the video loops without a visible seam.
  */
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync, readFileSync } from 'node:fs';
@@ -50,7 +50,9 @@ for (const name of names) {
   }
   const tmp = mkdtempSync(join(tmpdir(), `loop-${name}-`));
   frames.forEach((f, i) => copyFileSync(join(SRC, name, f), join(tmp, `${String(i).padStart(4, '0')}.png`)));
-  copyFileSync(join(SRC, name, frames[0]), join(tmp, `${String(frames.length).padStart(4, '0')}.png`)); // close the cycle
+  // close the cycle: frames 0 and 1 again after the last, so the interpolator reaches the seam
+  copyFileSync(join(SRC, name, frames[0]), join(tmp, `${String(frames.length).padStart(4, '0')}.png`));
+  copyFileSync(join(SRC, name, frames[1]), join(tmp, `${String(frames.length + 1).padStart(4, '0')}.png`));
   const inRate = frames.length / SECONDS;
   const total = SECONDS * FPS;
   const vf = `minterpolate=fps=${FPS}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1,trim=end_frame=${total},setpts=PTS-STARTPTS,format=yuv420p`;
@@ -58,9 +60,9 @@ for (const name of names) {
   const mp4 = join(DST, `${name}.mp4`);
   const webm = join(DST, `${name}.webm`);
   // H.264 — plays everywhere
-  ff([...input, '-vf', vf, '-an', '-c:v', 'libx264', '-preset', 'slow', '-crf', '27', '-profile:v', 'high', '-tune', 'film', '-movflags', '+faststart', mp4]);
+  ff([...input, '-vf', vf, '-an', '-c:v', 'libx264', '-preset', 'slow', '-crf', '22', '-profile:v', 'high', '-tune', 'film', '-movflags', '+faststart', mp4]);
   // VP9 — usually smaller; kept only when it is
-  ff([...input, '-vf', vf, '-an', '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '40', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2', webm]);
+  ff([...input, '-vf', vf, '-an', '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '31', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2', webm]);
   rmSync(tmp, { recursive: true, force: true });
 
   const size = (p) => (existsSync(p) ? statSync(p).size : Infinity);

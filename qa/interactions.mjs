@@ -186,6 +186,11 @@ const watch = (page) => {
   await page.keyboard.press('+');
   await page.waitForTimeout(350);
   ok('Viewer: zooms in', await page.$eval('.lb', (l) => l.classList.contains('is-zoomed')));
+  if (axeSource) {
+    await page.addScriptTag({ content: axeSource });
+    const v = await page.evaluate(async () => (await window.axe.run('.lb', { runOnly: ['wcag2a', 'wcag2aa'] })).violations.map((x) => `${x.id}(${x.nodes.length})`));
+    ok('axe WCAG A/AA: open image viewer', !v.length, v.join(', '));
+  }
   await page.mouse.move(720, 450);
   await page.mouse.down();
   await page.mouse.move(640, 420, { steps: 4 });
@@ -221,11 +226,17 @@ const watch = (page) => {
   await page.keyboard.press('Control+k');
   await page.waitForSelector('.search-panel.is-open');
   ok('Ctrl+K opens the search palette with suggestions', (await page.$$('#search-list [role=option]')).length >= 5);
+  if (axeSource) {
+    await page.addScriptTag({ content: axeSource });
+    const v = await page.evaluate(async () => (await window.axe.run('#search-panel', { runOnly: ['wcag2a', 'wcag2aa'] })).violations.map((x) => `${x.id}(${x.nodes.length})`));
+    ok('axe WCAG A/AA: open search palette', !v.length, v.join(', '));
+  }
   await page.keyboard.type('face');
   await page.waitForTimeout(300);
+  ok('Nothing is highlighted until an arrow key is used', (await page.$eval('#search-input', (i) => i.getAttribute('aria-activedescendant'))) === '');
   await page.keyboard.press('ArrowDown');
   const ad = await page.$eval('#search-input', (i) => i.getAttribute('aria-activedescendant'));
-  ok('Arrow keys move through results (aria-activedescendant)', ad === 'sopt-1');
+  ok('Arrow keys move through results (aria-activedescendant)', ad === 'sopt-0');
   const target = await page.$eval(`#${ad}`, (a) => a.getAttribute('href'));
   await Promise.all([page.waitForURL((u) => u.href.includes(target.split('#')[0]), { timeout: 5000 }).catch(() => {}), page.keyboard.press('Enter')]);
   ok('Enter opens the highlighted result', page.url().includes(target.split('#')[0]), target);

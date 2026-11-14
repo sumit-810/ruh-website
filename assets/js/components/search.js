@@ -53,7 +53,8 @@ const startMarkup = () => {
 
 /**
  * Search palette: opens with the search icon, "/" or ⌘K / Ctrl+K. Arrow keys
- * move through results, Enter opens one, Escape closes. Keyboard model
+ * move through results and Enter opens the highlighted one; with nothing
+ * highlighted, Enter shows the full results page. Escape closes. Keyboard model
  * inspired by command palettes such as Unsloth Studio's; written for this site.
  */
 export const renderSearch = () => {
@@ -108,9 +109,9 @@ export const renderSearch = () => {
     list.innerHTML = q.trim() ? resultsMarkup(q, hits, { palette: true }) : startMarkup();
     suggest.hidden = !!q.trim();
     live.textContent = q.trim() ? (hits.length ? `${hits.length} results` : 'No results') : '';
+    // nothing is highlighted until an arrow key is used, so Enter still submits to the results page
     active = -1;
     input.setAttribute('aria-activedescendant', '');
-    if (q.trim() && options().length) setActive(0);
   };
   const ov = makeOverlay(panel, {
     onOpen: () => {
@@ -124,7 +125,7 @@ export const renderSearch = () => {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      setActive(active + (e.key === 'ArrowDown' ? 1 : -1));
+      setActive(active < 0 ? (e.key === 'ArrowDown' ? 0 : -1) : active + (e.key === 'ArrowDown' ? 1 : -1));
     } else if (e.key === 'Home' && active >= 0) {
       e.preventDefault();
       setActive(0);

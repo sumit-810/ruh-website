@@ -73,6 +73,18 @@ export const images = {
     "alt": "Gentle Company Body Mist Nº 01 on a travertine block against warm apricot plaster, in leaf-dappled sunlight",
     "kind": "render"
   },
+  "intro_still": {
+    "w": 1280,
+    "h": 1600,
+    "widths": [
+      480,
+      800,
+      1200,
+      1280
+    ],
+    "alt": "A jar of Gentle Company Body Butter on folded linen and travertine, in soft window light",
+    "kind": "render"
+  },
   "lineup": {
     "w": 2400,
     "h": 1350,
@@ -144,6 +156,18 @@ export const images = {
       1280
     ],
     "alt": "Body Mist Nº 01 on a travertine bath ledge beside a folded linen towel",
+    "kind": "render"
+  },
+  "trio_still": {
+    "w": 1280,
+    "h": 1280,
+    "widths": [
+      480,
+      800,
+      1200,
+      1280
+    ],
+    "alt": "Gentle Company Body Lotion, Moisturiser and Lip Balm on travertine against clay plaster",
     "kind": "render"
   },
   "up_body_butter": {

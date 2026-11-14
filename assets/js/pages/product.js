@@ -48,8 +48,7 @@ const glance = (p, col) => {
         .slice(0, 6)
         .map((x) => {
           const key = x.kind === 'product' ? x.item.images[0]?.key : x.item.image;
-          const src = thumb(key);
-          return src ? `<img src="${src}" alt="" width="36" height="45" loading="lazy">` : '';
+          return key ? picture(key, { alt: '', sizes: '36px' }) : ''; // smallest AVIF/WebP, not the JPEG fallback
         })
         .join('')}</span>
       <span>Part of ${esc(col.name)} · ${line.length} products</span>
