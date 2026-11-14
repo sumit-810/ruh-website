@@ -20,7 +20,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export async function launchReport() {
   const { site, products } = await import(pathToFileURL(join(ROOT, 'site.config.js')));
   const { policies } = await import(pathToFileURL(join(ROOT, 'content/policies.js')));
-  const { images } = await import(pathToFileURL(join(ROOT, 'assets/js/data/images.js')));
+  const { images } = await import(pathToFileURL(join(ROOT, 'src/data/images.js')));
   const blockers = [];
   const warnings = [];
   const block = (area, msg) => blockers.push({ area, msg });

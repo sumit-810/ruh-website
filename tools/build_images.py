@@ -5,7 +5,7 @@ Sources, per image key (e.g. hero_wide, pack_front):
   2. tools/render/out/<key>.png                                  — concept renders (Blender)
 
 For each key found it writes assets/img/<key>-<width>.{avif,webp,jpg} and
-updates assets/js/data/images.js — the manifest the site reads for srcset,
+updates src/data/images.js — the manifest the site reads for srcset,
 width/height, default alt text and `kind` ("photo" or "render"). Keys with no
 source this run are kept as they are, so you can replace renders one photo at
 a time. The site labels renders as concept renders and stops doing so for a
@@ -30,8 +30,8 @@ SRC = ROOT / "tools" / "render" / "out"
 PHOTO = ROOT / "assets-src" / "photography"
 PHOTO_EXT = (".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff")
 MIN_WIDTH = 1600  # warn when a photo is smaller than this
-DST = ROOT / "assets" / "img"
-MANIFEST = ROOT / "assets" / "js" / "data" / "images.js"
+DST = ROOT / "public" / "assets" / "img"
+MANIFEST = ROOT / "src" / "data" / "images.js"
 
 WIDTHS = [480, 800, 1200, 1600, 2400]
 QUALITY = {"avif": 52, "webp": 78, "jpg": 82}
@@ -130,7 +130,7 @@ def main():
         r = im.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
         left = (r.width - tw) // 2
         og = r.crop((left, 0, left + tw, th))
-        mark = ROOT / "assets" / "brand" / "og-wordmark.png"
+        mark = ROOT / "public" / "assets" / "brand" / "og-wordmark.png"
         if mark.exists():
             wm = Image.open(mark).convert("RGBA")
             og.paste(wm, (72, th - 72 - wm.height), wm)

@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createOrder, validateCustomer } from '../server/create-order.mjs';
 import { verifyPayment, signatureFor, isValidSignature } from '../server/verify-payment.mjs';
-import { quote } from '../assets/js/lib/pricing.js';
+import { quote } from '../src/lib/pricing.js';
 import { products } from '../site.config.js';
 
 const env = { RAZORPAY_KEY_ID: 'rzp_test_key', RAZORPAY_KEY_SECRET: 'test_secret' };

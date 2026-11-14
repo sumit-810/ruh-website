@@ -5,7 +5,7 @@ Writes to assets/brand/:
   gentle-company-stacked.svg         GENTLE / COMPANY, two lines (packaging, square formats)
   gentle-company-monogram.svg        GC monogram in a soft arch (favicon, social avatar, seals)
   gentle-company-wordmark-ivory.svg  reversed wordmark for dark backgrounds
-and assets/img/favicon.svg, plus assets/js/data/brand.js (inline SVG strings
+and public/assets/img/favicon.svg, plus src/data/brand.js (inline SVG strings
 the site uses; currentColor so CSS controls the colour).
 
 Letterforms are Marcellus (SIL Open Font License, tools/brand-fonts/) with
@@ -25,9 +25,9 @@ from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parent.parent
 FONT = ROOT / "tools" / "brand-fonts" / "Marcellus-Regular.ttf"
-OUT = ROOT / "assets" / "brand"
-DATA = ROOT / "assets" / "js" / "data" / "brand.js"
-FAVICON = ROOT / "assets" / "img" / "favicon.svg"
+OUT = ROOT / "public" / "assets" / "brand"
+DATA = ROOT / "src" / "data" / "brand.js"
+FAVICON = ROOT / "public" / "assets" / "img" / "favicon.svg"
 
 COLORS = {"cocoa": "#2a201b", "milk": "#f6f2ec", "clay": "#9c5a40", "apricot": "#e9c2a2"}
 TRACK = 0.2  # letter-spacing, in em — the wordmark's signature openness

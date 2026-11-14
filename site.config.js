@@ -38,7 +38,7 @@ export const site = {
 
   /** Announcement bar. Keep each under ~60 characters. Empty array hides it. */
   announcements: [
-    { text: 'Body Mist Nº 01 — launching soon. Get first access', href: 'product.html?p=body-mist-no-01#notify' },
+    { text: 'Body Mist Nº 01 — launching soon. Get first access', href: '/products/body-mist-no-01#notify' },
   ],
 
   // ---------------------------------------------------------------------------
@@ -240,38 +240,38 @@ export const statusLabels = {
 
 export const navigation = {
   primary: [
-    { label: 'Shop', href: 'shop.html', mega: 'all' },
-    { label: 'Body', href: 'collection.html?c=body-care', mega: 'body-care' },
-    { label: 'Face', href: 'collection.html?c=face-care', mega: 'face-care' },
-    { label: 'Lip', href: 'collection.html?c=lip-care', mega: 'lip-care' },
-    { label: 'Our Story', href: 'story.html' },
+    { label: 'Shop', href: '/shop', mega: 'all' },
+    { label: 'Body', href: '/collections/body-care', mega: 'body-care' },
+    { label: 'Face', href: '/collections/face-care', mega: 'face-care' },
+    { label: 'Lip', href: '/collections/lip-care', mega: 'lip-care' },
+    { label: 'Our Story', href: '/story' },
   ],
   footer: [
     {
       title: 'Shop',
       links: [
-        { label: 'Body Mist Nº 01', href: 'product.html?p=body-mist-no-01' },
-        { label: 'Shop all', href: 'shop.html' },
-        { label: 'Body care', href: 'collection.html?c=body-care' },
-        { label: 'Face care', href: 'collection.html?c=face-care' },
-        { label: 'Lip care', href: 'collection.html?c=lip-care' },
+        { label: 'Body Mist Nº 01', href: '/products/body-mist-no-01' },
+        { label: 'Shop all', href: '/shop' },
+        { label: 'Body care', href: '/collections/body-care' },
+        { label: 'Face care', href: '/collections/face-care' },
+        { label: 'Lip care', href: '/collections/lip-care' },
       ],
     },
     {
       title: 'About',
       links: [
-        { label: 'Our story', href: 'story.html' },
-        { label: 'Journal', href: 'journal.html' },
-        { label: 'Contact', href: 'contact.html' },
-        { label: 'FAQs', href: 'faq.html' },
+        { label: 'Our story', href: '/story' },
+        { label: 'Journal', href: '/journal' },
+        { label: 'Contact', href: '/contact' },
+        { label: 'FAQs', href: '/faq' },
       ],
     },
     {
       title: 'Policies',
       links: [
-        { label: 'Shipping & returns', href: 'shipping-returns.html' },
-        { label: 'Privacy policy', href: 'privacy.html' },
-        { label: 'Terms & conditions', href: 'terms.html' },
+        { label: 'Shipping & returns', href: '/shipping-returns' },
+        { label: 'Privacy policy', href: '/privacy' },
+        { label: 'Terms & conditions', href: '/terms' },
       ],
     },
   ],
@@ -287,20 +287,20 @@ export const content = {
       eyebrow: 'Body Mist Nº 01',
       title: 'Gentle, from the *first mist.*',
       text: 'The first release from Gentle Company. Launching soon.',
-      primary: { label: 'Explore the mist', href: 'product.html?p=body-mist-no-01' },
+      primary: { label: 'Explore the mist', href: '/products/body-mist-no-01' },
       secondary: { label: 'Get launch updates', href: '#early-access' },
       image: 'hero_wide',
       imageMobile: 'hero_portrait',
       imageAlt: 'Gentle Company Body Mist Nº 01 on a travertine block against warm apricot plaster, in leaf-dappled sunlight',
     },
-    shelf: { title: 'The collection', link: { label: 'Shop all', href: 'shop.html' } },
+    shelf: { title: 'The collection', link: { label: 'Shop all', href: '/shop' } },
     categories: { title: 'Shop by category' },
     intro: {
       title: 'Care, *made gently.*',
       lines: ['Body and skin care for India.', 'One considered range, starting with a mist.'],
       image: 'ritual',
       imageAlt: 'Body Mist Nº 01 on a travertine bath ledge beside a folded linen towel, in leaf-dappled light',
-      link: { label: 'Our story', href: 'story.html' },
+      link: { label: 'Our story', href: '/story' },
     },
     experience: { eyebrow: 'Body Mist Nº 01', title: 'Made for the *everyday ritual.*' },
     future: {

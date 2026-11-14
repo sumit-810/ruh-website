@@ -6,7 +6,7 @@
  * creates a Razorpay order and returns what Razorpay Checkout needs.
  * Env: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (Vercel → Project → Settings → Environment Variables).
  */
-import { quote } from '../assets/js/lib/pricing.js';
+import { quote } from '../src/lib/pricing.js';
 import { site } from '../site.config.js';
 import { json, clean, readJson, RAZORPAY_API, basicAuth } from './http.mjs';
 
