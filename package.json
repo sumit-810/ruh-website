@@ -1,7 +1,7 @@
 {
   "name": "gentle-company-website",
   "private": true,
-  "description": "Gentle Company \u2014 D2C website (static site + Vercel functions for Razorpay and Brevo)",
+  "description": "Gentle Company — D2C website (static site + Vercel functions for Razorpay and Brevo)",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -13,5 +13,8 @@
     "single-file": "node tools/build_single_file.mjs",
     "serve": "python3 -m http.server 8080",
     "audit": "cd qa && node brand-audit.mjs"
+  },
+  "devDependencies": {
+    "shadcn": "^4.23.0"
   }
 }
